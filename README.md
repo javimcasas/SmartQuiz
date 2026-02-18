@@ -1,29 +1,30 @@
+
 # SmartQuiz 🚀
 
-**SmartQuiz** es una aplicación de quizzes de práctica que soporta **CLI** y **Web**, con exámenes en **JSON puro**. Perfecta para preparación de certificaciones técnicas (HCIE, CCNA, etc.) o formación interna.
+**SmartQuiz** is a practice quiz application that supports **CLI** and **Web**, with exams in **plain JSON**. Perfect for preparing technical certifications (HCIE, CCNA, etc.) or internal training.
 
-## ✨ Características
+## ✨ Features
 
-- **CLI nativo** (Python): runner interactivo con navegación (next/prev/goto), shuffle de preguntas, corrección automática.
-- **Interfaz Web moderna**: Tailwind CSS, responsive, formularios para todos los tipos de pregunta.
-- **Motor unificado**: misma lógica para CLI y Web (mismo JSON → misma corrección).
-- **Tipos de pregunta**:
+- **Native CLI** (Python): interactive runner with navigation (next/prev/goto), question shuffling, automatic grading.
+- **Modern Web interface**: Tailwind CSS, responsive, forms for all question types.
+- **Unified engine**: same logic for CLI and Web (same JSON → same grading).
+- **Question types**:
   - Single choice / True/False
   - Multiple choice
   - Fill-in-the-blank
-- **Exámenes JSON** con:
-  - Título, descripción, dificultad
-  - Shuffle automático
-  - Puntos por pregunta
-  - Explicaciones opcionales
-- **Corrección completa**: puntos totales, % correcto, detalle por pregunta.
+- **JSON exams** with:
+  - Title, description, difficulty
+  - Automatic shuffle
+  - Points per question
+  - Optional explanations
+- **Full grading**: total points, correct percentage, per-question details.
 
 ## 🎯 Demo
 
 ### Web UI
 
 ```
-Lista de exámenes → Formulario → Resultado con puntuación
+Exam list → Form → Scored result
 ```
 
 ![screenshot](https://via.placeholder.com/1200x600/0f172a/64748b?text=SmartQuiz+Web+Demo)
@@ -41,41 +42,41 @@ Commands: n=next, p=previous, g<num>, s=submit
 [Q1]> a,c
 ```
 
-## 🚀 Rápido para empezar
+## 🚀 Quick start
 
 ```bash
-# 1. Clona el repo
+# 1. Clone the repo
 git clone https://github.com/javimcasas/SmartQuiz.git
 cd SmartQuiz
 
-# 2. Instala dependencias (solo para web)
+# 2. Install dependencies (web only)
 pip install fastapi uvicorn jinja2
 
-# 3. Añade exámenes a exams/
-# (ej: copia el JSON de HCIE Storage que generé)
+# 3. Add exams to exams/
+# (e.g. copy the HCIE Storage JSON exam)
 
-# 4. CLI (siempre funciona)
+# 4. CLI (always works)
 python quiz_runner.py
 
-# 5. Web (opcional)
+# 5. Web (optional)
 uvicorn web_app:app --reload
-# Abre http://127.0.0.1:8000/
+# Open http://127.0.0.1:8000/
 ```
 
-## 📁 Estructura del proyecto
+## 📁 Project structure
 
 ```
 SmartQuiz/
-├── exams/                 # Tus JSON de exámenes
+├── exams/                 # Your exam JSON files
 │   └── hcie-storage-mock-01.json
-├── quizcore.py           # Motor central (lógica de quizzes)
-├── quiz_runner.py        # CLI runner
-├── web_app.py            # FastAPI + Jinja2 + Tailwind
-├── templates/            # HTML views
+├── quizcore.py            # Core engine (quiz logic)
+├── quiz_runner.py         # CLI runner
+├── web_app.py             # FastAPI + Jinja2 + Tailwind
+├── templates/             # HTML views
 └── README.md
 ```
 
-## 📖 Formato de examen JSON
+## 📖 JSON exam format
 
 ```json
 {
@@ -96,31 +97,31 @@ SmartQuiz/
 }
 ```
 
-## 🛠️ Desarrollo
+## 🛠️ Development
 
 ```bash
-# CLI puro (sin dependencias)
+# Pure CLI (no extra dependencies)
 python quiz_runner.py
 
-# Web con hot reload
+# Web with hot reload
 uvicorn web_app:app --reload
 
-# Añadir nuevo examen
-# → Copia JSON a exams/, recarga página
+# Add a new exam
+# → Copy a JSON file into exams/, reload the page
 ```
 
 ## 🔮 Roadmap
 
-- [ ] Editor web para crear exámenes JSON
-- [ ] Exportar resultados CSV/PDF
-- [ ] Multi-idioma
-- [ ] API REST completa
+- [ ] Web editor to create JSON exams
+- [ ] Export results to CSV/PDF
+- [ ] Multi-language support
+- [ ] Full REST API
 - [ ] Docker deployment
 
-## 📄 Licencia
+## 📄 License
 
-MIT License – ver `LICENSE`.
+MIT License – see `LICENSE`.
 
 ---
 
-**Hecho con ❤️ por [javimcasas](https://github.com/javimcasas)**
+**Made with ❤️ by [javimcasas](https://github.com/javimcasas)**
