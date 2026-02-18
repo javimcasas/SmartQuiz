@@ -16,17 +16,14 @@ EXAMS_DIR = BASE_DIR / "exams"
 app = FastAPI()
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-
 def list_exam_files() -> List[Path]:
     return sorted(EXAMS_DIR.glob("*.json"))
-
 
 def load_exam_by_id(exam_id: str) -> Exam:
     for p in list_exam_files():
         if p.stem == exam_id:
             return load_exam(p)
     raise ValueError(f"Exam '{exam_id}' not found")
-
 
 def grade_exam_by_index(exam: Exam, user_answers_by_index: Dict[int, List[str]]) -> GradeResult:
     per_question: List[QuestionResult] = []
@@ -60,22 +57,35 @@ def grade_exam_by_index(exam: Exam, user_answers_by_index: Dict[int, List[str]])
         per_question=per_question,
     )
 
-
 @app.get("/")
 def index(request: Request):
     exams = []
     for p in list_exam_files():
         exam = load_exam(p)
+        time_limit_seconds = getattr(exam, 'time_limit_seconds', None)
+        if time_limit_seconds:
+            hours = time_limit_seconds // 3600
+            minutes = (time_limit_seconds % 3600) // 60
+            seconds = time_limit_seconds % 60
+            display_parts = []
+            if hours > 0:
+                display_parts.append(f"{hours}h")
+            display_parts.append(f"{minutes}m")
+            if seconds > 0:
+                display_parts.append(f"{seconds}s")
+            time_limit_display = "⏱️ " + " ".join(display_parts)
+        else:
+            time_limit_display = None
         exams.append(
             {
                 "id": p.stem,
                 "title": exam.title,
                 "description": exam.description,
                 "difficulty": exam.difficulty,
+                "time_limit_display": time_limit_display,
             }
         )
     return templates.TemplateResponse("index.html", {"request": request, "exams": exams})
-
 
 @app.get("/exam/{exam_id}")
 def show_exam(request: Request, exam_id: str):
@@ -88,7 +98,6 @@ def show_exam(request: Request, exam_id: str):
             "exam": exam,
         },
     )
-
 
 @app.post("/exam/{exam_id}")
 async def submit_exam(request: Request, exam_id: str):

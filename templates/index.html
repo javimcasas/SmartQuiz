@@ -17,11 +17,17 @@
       {% for e in exams %}
         <a href="/exam/{{ e.id }}" class="block rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition-colors p-4">
           <div class="flex items-start justify-between gap-2">
-            <div>
+            <div class="flex-1">
               <h2 class="text-lg font-medium">{{ e.title }}</h2>
               {% if e.description %}
                 <p class="mt-1 text-sm text-slate-400 line-clamp-3">
                   {{ e.description }}
+                </p>
+              {% endif %}
+              <!-- Tiempo debajo de descripción, como línea separada -->
+              {% if e.time_limit_display %}
+                <p class="mt-2 text-xs text-slate-500 font-mono flex items-center gap-1">
+                  {{ e.time_limit_display }}
                 </p>
               {% endif %}
             </div>

@@ -36,6 +36,7 @@ class Exam:
     questions: List[Question]
     shuffle_questions: bool = False
     difficulty: Optional[str] = None
+    time_limit_seconds: Optional[int] = None
     
 
 @dataclass
@@ -92,12 +93,16 @@ def load_exam(path: str | Path) -> Exam:
         description=raw.get("description", ""),
         questions=questions,
         shuffle_questions=raw.get("shuffle_questions", False),
-        difficulty=raw.get("difficulty"),  # nuevo
+        difficulty=raw.get("difficulty"),
+        time_limit_seconds=raw.get("time_limit_seconds"),
     )
 
     validate_exam(exam)
     if exam.shuffle_questions:
         random.shuffle(exam.questions)
+        
+    if exam.time_limit_seconds and exam.time_limit_seconds < 0: 
+        raise ValueError("Invalid time limit")
 
     return exam
 

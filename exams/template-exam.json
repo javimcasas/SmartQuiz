@@ -4,6 +4,7 @@
   "description": "Template file showing all supported question types with examples and explanations. Copy, edit and rename to create your own exams.",
   "difficulty": "medium",
   "shuffle_questions": true,
+  "time_limit_seconds": 1800,
   "questions": [
     {
       "number": 1,

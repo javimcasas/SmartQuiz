@@ -7,7 +7,7 @@
     <a href="/" class="text-sm text-slate-400 hover:text-slate-200">&larr; Back to exams</a>
   </div>
 
-  <div class="mb-6">
+  <div class="mb-8">  <!-- mb-8 para más espacio -->
     <h1 class="text-2xl font-semibold tracking-tight">{{ exam.title }}</h1>
     <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-400">
       {% if exam.description %}
@@ -28,10 +28,21 @@
       <span class="text-xs uppercase tracking-wide text-slate-500">
         {{ exam.questions|length }} questions
       </span>
+      {% if exam.time_limit_seconds %}
+        {% set hours = (exam.time_limit_seconds // 3600) %}
+        {% set mins = ((exam.time_limit_seconds % 3600) // 60) %}
+        <span class="text-xs uppercase tracking-wide text-slate-500 font-mono">
+          ⏱️ {% if hours > 0 %}{{ hours }}h {% endif %}{{ mins }}m
+        </span>
+      {% endif %}
     </div>
+
+    {% if exam.time_limit_seconds %}
+      <div id="timer" class="text-3xl font-mono font-bold text-sky-400 mt-6 mb-6 p-4 bg-slate-900/50 rounded-xl border border-sky-500/30 text-center animate-pulse" data-max-time="{{ exam.time_limit_seconds }}"></div>
+    {% endif %}
   </div>
 
-  <form method="post" class="space-y-4">
+  <form method="post" class="space-y-4" id="examForm">
     {% for q in exam.questions %}
       {% set idx = loop.index0 %}
       <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
@@ -106,4 +117,50 @@
       </button>
     </div>
   </form>
+
+  {% if exam.time_limit_seconds %}
+  <script>
+    (function() {
+      const timerEl = document.getElementById('timer');
+      const form = document.getElementById('examForm');
+      const maxTime = parseInt(timerEl.dataset.maxTime);
+      let timeLeft = maxTime;
+
+      function updateDisplay() {
+        let display = '';
+        const hours = Math.floor(timeLeft / 3600);
+        const mins = Math.floor((timeLeft % 3600) / 60);
+        const secs = timeLeft % 60;
+
+        if (hours > 0) {
+          display += hours + 'h ';
+        }
+        display += mins.toString().padStart(2, '0') + 'm';
+        if (maxTime < 3600 || timeLeft < 3600) {
+          display += ' ' + secs.toString().padStart(2, '0') + 's';
+        }
+
+        timerEl.textContent = display.trim() || '0s';
+        timerEl.className = timeLeft < 60 ? 
+          'text-3xl font-mono font-bold text-rose-400 mb-6 p-4 bg-slate-900/50 rounded-xl border border-rose-500/30 text-center animate-pulse' : 
+          (timeLeft < 300 ? 
+            'text-3xl font-mono font-bold text-amber-400 mb-6 p-4 bg-slate-900/50 rounded-xl border border-amber-500/30 text-center animate-pulse' :
+            'text-3xl font-mono font-bold text-sky-400 mb-6 p-4 bg-slate-900/50 rounded-xl border border-sky-500/30 text-center animate-pulse'
+          );
+      }
+
+      updateDisplay();
+      const interval = setInterval(() => {
+        timeLeft--;
+        updateDisplay();
+        if (timeLeft <= 0) {
+          clearInterval(interval);
+          timerEl.textContent = '¡Tiempo agotado!';
+          timerEl.className = 'text-3xl font-mono font-bold text-rose-500 mb-6 p-4 bg-slate-900/50 rounded-xl border border-rose-500/30 text-center animate-pulse';
+          form.submit();
+        }
+      }, 1000);
+    })();
+  </script>
+  {% endif %}
 {% endblock %}
