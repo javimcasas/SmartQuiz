@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}SmartQuiz · Exams{% endblock %}
+
+{% block content %}
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-semibold tracking-tight">Available exams</h1>
+      <p class="text-sm text-slate-400">
+        Choose an exam to start a practice session.
+      </p>
+    </div>
+  </div>
+
+  {% if exams %}
+    <div class="grid gap-4 md:grid-cols-2">
+      {% for e in exams %}
+        <a href="/exam/{{ e.id }}" class="block rounded-xl border border-slate-800 bg-slate-900/60 hover:bg-slate-800/80 transition-colors p-4">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <h2 class="text-lg font-medium">{{ e.title }}</h2>
+              {% if e.description %}
+                <p class="mt-1 text-sm text-slate-400 line-clamp-3">
+                  {{ e.description }}
+                </p>
+              {% endif %}
+            </div>
+            {% if e.difficulty %}
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                           {% if e.difficulty == 'easy' %}
+                             bg-emerald-500/10 text-emerald-300 border border-emerald-500/30
+                           {% elif e.difficulty == 'hard' %}
+                             bg-rose-500/10 text-rose-300 border border-rose-500/30
+                           {% else %}
+                             bg-amber-500/10 text-amber-300 border border-amber-500/30
+                           {% endif %}">
+                {{ e.difficulty|capitalize }}
+              </span>
+            {% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="rounded-xl border border-dashed border-slate-700 bg-slate-900/40 p-6">
+      <p class="text-sm text-slate-400">
+        No exams found in your <code class="px-1 py-0.5 rounded bg-slate-800 text-xs">exams/</code> folder.
+      </p>
+    </div>
+  {% endif %}
+{% endblock %}

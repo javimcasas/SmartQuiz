@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}SmartQuiz{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Tailwind Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+      <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2">
+          <span class="text-xl font-semibold tracking-tight">SmartQuiz</span>
+        </a>
+        <span class="text-xs uppercase tracking-wide text-slate-400">
+          CLI + Web · JSON exams
+        </span>
+      </div>
+    </header>
+
+    <main class="flex-1">
+      <div class="max-w-4xl mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="border-t border-slate-800 text-xs text-slate-500">
+      <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+        <span>SmartQuiz · Local practice tool</span>
+        <span>Built with FastAPI + Tailwind</span>
+      </div>
+    </footer>
+  </body>
+</html>

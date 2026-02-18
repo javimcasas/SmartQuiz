@@ -1,0 +1,67 @@
+{
+  "id": "template-exam",
+  "title": "SmartQuiz Template - All Question Types",
+  "description": "Template file showing all supported question types with examples and explanations. Copy, edit and rename to create your own exams.",
+  "difficulty": "medium",
+  "shuffle_questions": true,
+  "questions": [
+    {
+      "number": 1,
+      "type": "single",
+      "question": "What is the capital of France?",
+      "options": [
+        {"value": "a", "text": "Berlin"},
+        {"value": "b", "text": "Paris", "description": "Correct! Paris is the capital and largest city of France."},
+        {"value": "c", "text": "Madrid"},
+        {"value": "d", "text": "Rome"}
+      ],
+      "correct": ["b"],
+      "points": 1
+    },
+    {
+      "number": 2,
+      "type": "multiple",
+      "question": "Which of these are web browsers? (Select all that apply)",
+      "options": [
+        {"value": "a", "text": "Firefox"},
+        {"value": "b", "text": "Notepad++", "description": "Notepad++ is a text editor, not a browser."},
+        {"value": "c", "text": "Chrome"},
+        {"value": "d", "text": "Chrome DevTools"}
+      ],
+      "correct": ["a", "c"],
+      "points": 2
+    },
+    {
+      "number": 3,
+      "type": "true_false",
+      "question": "The Earth revolves around the Sun.",
+      "options": [
+        {"value": "true", "text": "True"},
+        {"value": "false", "text": "False", "description": "Correct! This is a basic astronomical fact."}
+      ],
+      "correct": ["true"],
+      "points": 1
+    },
+    {
+      "number": 4,
+      "type": "fill_blank",
+      "question": "The chemical symbol for water is ____.",
+      "correct": ["h2o", "H2O"],
+      "case_sensitive": false,
+      "points": 1
+    },
+    {
+      "number": 5,
+      "type": "single",
+      "question": "How many seconds are there in one minute?",
+      "options": [
+        {"value": "a", "text": "30"},
+        {"value": "b", "text": "60", "description": "Correct! 60 seconds = 1 minute."},
+        {"value": "c", "text": "100"},
+        {"value": "d", "text": "3600"}
+      ],
+      "correct": ["b"],
+      "points": 1
+    }
+  ]
+}
