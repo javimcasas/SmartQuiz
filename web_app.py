@@ -66,8 +66,34 @@ def load_exam_by_id(exam_id: str) -> Exam:
 
 
 def save_completed_exam(exam: Exam, result: GradeResult) -> str:
-    """Guarda el resultado completado y retorna el ID único"""
+    """Guarda el resultado COMPLETO con preguntas y opciones"""
     completion_id = str(uuid.uuid4())
+    
+    # Crear resultados completos con preguntas
+    per_question_full = []
+    for qr in result.per_question:
+        # Buscar pregunta original por número
+        question = next((q for q in exam.questions if q.number == qr.question_number), None)
+        if question:
+            per_question_full.append({
+                "question_number": qr.question_number,
+                "question_text": question.question,
+                "question_type": question.type,
+                "options": [
+                    {
+                        "value": opt.value,
+                        "text": opt.text,
+                        "description": opt.description
+                    }
+                    for opt in question.options
+                ],
+                "is_correct": qr.is_correct,
+                "gained_points": qr.gained_points,
+                "max_points": qr.max_points,
+                "user_answer": qr.user_answer,
+                "correct_answer": qr.correct_answer
+            })
+    
     data = {
         "id": completion_id,
         "exam_id": exam.id,
@@ -76,17 +102,7 @@ def save_completed_exam(exam: Exam, result: GradeResult) -> str:
         "total_points": result.total_points,
         "max_points": result.max_points,
         "percentage": result.percentage,
-        "per_question": [
-            {
-                "question_number": qr.question_number,
-                "is_correct": qr.is_correct,
-                "gained_points": qr.gained_points,
-                "max_points": qr.max_points,
-                "user_answer": qr.user_answer,
-                "correct_answer": qr.correct_answer
-            }
-            for qr in result.per_question
-        ]
+        "per_question": per_question_full
     }
     
     result_file = COMPLETED_DIR / f"{completion_id}.json"
@@ -94,7 +110,6 @@ def save_completed_exam(exam: Exam, result: GradeResult) -> str:
         json.dump(data, f, indent=2, ensure_ascii=False)
     
     return completion_id
-
 
 def load_completed_exam(completion_id: str) -> Dict[str, Any]:
     """Carga un examen completado por su ID"""
@@ -170,17 +185,24 @@ def completed(request: Request):
 def completed_detail(request: Request, completion_id: str):
     try:
         result_data = load_completed_exam(completion_id)
-        # Cargar metadata del examen original
         exam = load_exam_by_id(result_data["exam_id"])
+        
+        # Convertir a formato compatible con template
+        result_obj = type('Result', (), {
+            'total_points': result_data['total_points'],
+            'max_points': result_data['max_points'],
+            'percentage': result_data['percentage'],
+            'per_question': result_data['per_question']
+        })()
+        
         context = {
             "exam": exam,
-            "result": result_data,
+            "result": result_obj,
             "n_correct": sum(1 for qr in result_data["per_question"] if qr["is_correct"]),
             "n_total": len(result_data["per_question"])
         }
         return get_theme_response(request, "result.html", context)
-    except ValueError as e:
-        # Si no encuentra el examen, mostrar error (o redirigir)
+    except ValueError:
         return RedirectResponse("/", status_code=302)
 
 @app.get("/api/completed/count")

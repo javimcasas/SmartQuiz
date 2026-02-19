@@ -57,6 +57,19 @@ class GradeResult:
     per_question: List[QuestionResult]
 
 
+@dataclass
+class QuestionResultFull:
+    question_number: int
+    question_text: str
+    question_type: str
+    options: List[AnswerOption]
+    is_correct: bool
+    gained_points: int
+    max_points: int
+    user_answer: List[str]
+    correct_answer: List[str]
+
+
 # ====== Loading & validation ======
 
 def load_exam(path: str | Path) -> Exam:
