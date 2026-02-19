@@ -38,6 +38,7 @@ class Exam:
     difficulty: Optional[str] = None
     time_limit_seconds: Optional[int] = None
     format: str = "multiple"
+    block_previous: bool = False
     
 
 @dataclass
@@ -110,6 +111,7 @@ def load_exam(path: str | Path) -> Exam:
         difficulty=raw.get("difficulty"),
         time_limit_seconds=raw.get("time_limit_seconds"),
         format=raw.get("format", "multiple"),
+        block_previous=raw.get("block_previous", False),
     )
 
     validate_exam(exam)
