@@ -2,12 +2,13 @@
 from __future__ import annotations
 import json
 import uuid
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 
 from quizcore import Exam, Question, load_exam, _check_question_answer, QuestionResult, GradeResult, grade_exam
@@ -142,6 +143,47 @@ def get_theme_response(request: Request, template_name: str, context: dict):
         return response
     
     return templates.TemplateResponse(template_name, {**context, "request": request})
+
+def import_exam(file: UploadFile) -> str:
+    """Importa un archivo JSON como examen nuevo"""
+    if not file.filename.lower().endswith('.json'):
+        raise HTTPException(status_code=400, detail="Only JSON files allowed")
+    
+    content = file.file.read().decode('utf-8')
+    try:
+        raw_exam = json.loads(content)
+        
+        # ✅ FIX: Crear Path temporal para validar con load_exam
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as temp_file:
+            json.dump(raw_exam, temp_file, indent=2, ensure_ascii=False)
+            temp_path = Path(temp_file.name)
+        
+        try:
+            exam = load_exam(temp_path)  # Ahora sí: Path válido
+        finally:
+            temp_path.unlink()  # Limpiar temp file
+        
+        # Generar ID único
+        exam_id = raw_exam.get('id', f"imported_{uuid.uuid4().hex[:8]}")
+        output_path = EXAMS_DIR / f"{exam_id}.json"
+        
+        # Si ya existe, añadir sufijo
+        counter = 1
+        while output_path.exists():
+            exam_id = f"{raw_exam.get('id', 'imported')}_{counter}"
+            output_path = EXAMS_DIR / f"{exam_id}.json"
+            counter += 1
+        
+        # Guardar el raw_exam validado
+        with output_path.open('w', encoding='utf-8') as f:
+            json.dump(raw_exam, f, indent=2, ensure_ascii=False)
+        
+        return exam_id
+        
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON format")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid exam format: {str(e)}")
 
 
 @app.get("/")
@@ -284,3 +326,19 @@ async def submit_exam(request: Request, exam_id: str):
         "n_correct": n_correct,
         "n_total": n_total
     })
+
+
+@app.post("/upload-exam")
+async def upload_exam(file: UploadFile = File(...)):
+    try:
+        exam_id = import_exam(file)
+        return {"success": True, "exam_id": exam_id, "message": f"Exam '{exam_id}' imported successfully!"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Upload failed")
+
+
+@app.get("/upload")
+def upload_form(request: Request):
+    return get_theme_response(request, "upload.html", {})

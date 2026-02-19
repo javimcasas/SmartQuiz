@@ -7,9 +7,51 @@
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Available exams</h1>
       <p class="text-sm text-muted-foreground">
-        Choose an exam to start a practice session.
+        Choose an exam to start a practice session or import new ones.
       </p>
     </div>
+  </div>
+
+  <!-- 🚀 TARJETA DE IMPORTACIÓN PREMIUM -->
+  <div class="mb-6">
+    <form id="uploadForm" class="relative rounded-xl border-2 border-dashed border-border bg-gradient-to-br from-muted/50 to-muted hover:border-sky-400 hover:from-sky-500/10 hover:to-blue-500/10 transition-all duration-300 p-8 text-center group cursor-pointer hover:shadow-xl">
+      
+      <!-- Input file oculto -->
+      <input type="file" name="file" id="fileInput" accept=".json" class="sr-only" required>
+      
+      <!-- Label invisible para click -->
+      <label for="fileInput" class="absolute inset-0 w-full h-full cursor-pointer rounded-xl"></label>
+      
+      <div class="relative z-10 flex flex-col items-center justify-center space-y-4 pointer-events-none">
+        <!-- Icono animado -->
+        <div class="w-20 h-20 bg-sky-500/10 group-hover:bg-sky-500/20 border-2 border-sky-500/30 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110">
+          <svg class="w-12 h-12 text-sky-500 group-hover:-rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+        </div>
+        
+        <div>
+          <h3 class="text-lg font-medium text-foreground mb-1">Import new exam</h3>
+          <p class="text-sm text-muted-foreground mb-2">Drag & drop your JSON exam file here or click to browse</p>
+          <p class="text-xs text-muted-foreground/70 font-mono bg-muted/50 px-2 py-0.5 rounded">.json only</p>
+        </div>
+      </div>
+      
+      <!-- Drag feedback -->
+      <p id="dragText" class="text-sm font-medium text-sky-500 mt-2 hidden transition-opacity">📁 Drop to upload...</p>
+      
+      <!-- Loading spinner -->
+      <div id="loadingSpinner" class="hidden mt-4">
+        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
+        <p class="text-sm text-sky-500 mt-2">Importing exam...</p>
+      </div>
+      
+      <!-- ✅ Success / ❌ Error messages -->
+      <div id="uploadMessage" class="mt-4 hidden">
+        <div id="successMsg" class="hidden p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-sm font-medium"></div>
+        <div id="errorMsg" class="hidden p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-500 text-sm font-medium"></div>
+      </div>
+    </form>
   </div>
 
   {% if exams %}
@@ -50,7 +92,116 @@
     <div class="rounded-xl border border-dashed border-border bg-muted/40 p-6">
       <p class="text-sm text-muted-foreground">
         No exams found in your <code class="px-1 py-0.5 rounded bg-muted text-xs">exams/</code> folder.
+        Use the import card above to add your first exam!
       </p>
     </div>
   {% endif %}
+
+  <!-- 🚀 SCRIPT AJAX PERFECTIONADO -->
+  <script>
+  (function() {
+    const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const dragText = document.getElementById('dragText');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    const successMsg = document.getElementById('successMsg');
+    const errorMsg = document.getElementById('errorMsg');
+    const uploadMessage = document.getElementById('uploadMessage');
+
+    // Drag & Drop - SOLO en tarjeta
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      form.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      form.addEventListener(eventName, () => {
+        form.classList.add('bg-sky-500/20', 'border-sky-400', 'ring-2', 'ring-sky-500/30');
+        dragText.classList.remove('hidden');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      form.addEventListener(eventName, () => {
+        form.classList.remove('bg-sky-500/20', 'border-sky-400', 'ring-2', 'ring-sky-500/30');
+        dragText.classList.add('hidden');
+      }, false);
+    });
+
+    form.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length > 0 && files[0].name.toLowerCase().endsWith('.json')) {
+        fileInput.files = files;
+        uploadFile();
+      }
+    }
+
+    // Click funciona via label
+    fileInput.addEventListener('change', uploadFile);
+
+    async function uploadFile() {
+      if (fileInput.files.length === 0) return;
+
+      // UI: Loading
+      loadingSpinner.classList.remove('hidden');
+      dragText.classList.add('hidden');
+      form.classList.add('opacity-75', 'pointer-events-none');
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/upload-exam', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          showMessage(`✅ ${result.message}`, 'success');
+          // Auto-recarga para mostrar nuevo examen
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          throw new Error(result.detail || 'Upload failed');
+        }
+      } catch (error) {
+        showMessage(`❌ ${error.message}`, 'error');
+      } finally {
+        // Reset
+        form.classList.remove('opacity-75', 'pointer-events-none');
+        loadingSpinner.classList.add('hidden');
+        fileInput.value = '';
+      }
+    }
+
+    function showMessage(text, type) {
+      uploadMessage.classList.remove('hidden');
+      
+      if (type === 'success') {
+        successMsg.textContent = text;
+        successMsg.classList.remove('hidden');
+        errorMsg.classList.add('hidden');
+      } else {
+        errorMsg.textContent = text;
+        errorMsg.classList.remove('hidden');
+        successMsg.classList.add('hidden');
+      }
+
+      // Auto-ocultar
+      setTimeout(() => {
+        uploadMessage.classList.add('hidden');
+        successMsg.classList.add('hidden');
+        errorMsg.classList.add('hidden');
+      }, 4000);
+    }
+  })();
+  </script>
 {% endblock %}
