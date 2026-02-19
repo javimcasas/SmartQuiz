@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Completed Exams · SmartQuiz{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-2xl font-semibold tracking-tight">Completed Exams</h1>
+    <p class="text-sm text-muted-foreground">
+      Review your practice sessions and track your progress.
+    </p>
+  </div>
+  <a href="/" class="text-sm text-muted-foreground hover:text-foreground">&larr; Back to exams</a>
+</div>
+
+{% if completed_exams %}
+<div class="grid gap-4 md:grid-cols-2">
+  {% for c in completed_exams %}
+  <a href="/completed/{{ c.id }}" class="block rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4">
+    <div class="flex items-start justify-between gap-2">
+      <div class="flex-1">
+        <h2 class="text-lg font-medium text-foreground">{{ c.title }}</h2>
+        {% if c.description %}
+        <p class="mt-1 text-sm text-muted-foreground line-clamp-2">
+          {{ c.description }}
+        </p>
+        {% endif %}
+        <div class="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+          <span>{{ "%.1f"|format(c.percentage) }}% ({{ c.total_points }}/{{ c.max_points }})</span>
+          {% if c.difficulty %}
+          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                      {% if c.difficulty == 'easy' %}
+                        bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                      {% elif c.difficulty == 'hard' %}
+                        bg-rose-500/10 text-rose-400 border border-rose-500/30
+                      {% else %}
+                        bg-amber-500/10 text-amber-400 border border-amber-500/30
+                      {% endif %}">
+            {{ c.difficulty|capitalize }}
+          </span>
+          {% endif %}
+          <span class="font-mono text-xs">{{ c.completed_at.split('T')[0] }}</span>
+        </div>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="rounded-xl border border-dashed border-border bg-muted/40 p-6">
+  <p class="text-sm text-muted-foreground">
+    No completed exams yet. <a href="/" class="text-foreground hover:underline">Start practicing!</a>
+  </p>
+</div>
+{% endif %}
+{% endblock %}
