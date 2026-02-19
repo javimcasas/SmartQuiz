@@ -6,16 +6,57 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* ESTILOS CSS PERSONALIZADOS - SOLUCIÓN DEFINITIVA */
+      .light {
+        --background: 240 5% 98%;     /* slate-50 */
+        --foreground: 216 34% 17%;   /* slate-900 */
+        --border: 216 34% 84%;       /* slate-200 */
+        --muted-foreground: 216 32.2% 46.1%; /* slate-500 */
+        --accent: 216 34% 94%;       /* slate-100 */
+        color-scheme: light;
+      }
+      
+      .dark {
+        --background: 222.2 84% 4.9%;    /* slate-900 */
+        --foreground: 210 40% 98%;      /* slate-100 */
+        --border: 217.2 32.6% 17.5%;    /* slate-800 */
+        --muted-foreground: 215 20.2% 65.1%; /* slate-400 */
+        --accent: 216 34% 17%;          /* slate-800/80 */
+        color-scheme: dark;
+      }
+      
+      /* Aplicar variables CSS a clases Tailwind */
+      .bg-background { background-color: hsl(var(--background)); }
+      .text-foreground { color: hsl(var(--foreground)); }
+      .border-border { border-color: hsl(var(--border)); }
+      .text-muted-foreground { color: hsl(var(--muted-foreground)); }
+      .bg-accent { background-color: hsl(var(--accent)); }
+      .hover\:bg-accent:hover { background-color: hsl(var(--accent)); }
+      .bg-background\/80 { background-color: hsl(var(--background) / 0.8); }
+      .border-border { border-color: hsl(var(--border)); }
+    </style>
   </head>
-  <body class="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
-    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+  <body class="{% if request.cookies.get('theme') == 'light' %}light{% else %}dark{% endif %} min-h-screen bg-background text-foreground flex flex-col">
+    <!-- HEADER Y CONTENIDO IGUAL -->
+    <header class="border-b border-border bg-background/80 backdrop-blur">
       <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
         <a href="/" class="flex items-center gap-2">
           <span class="text-xl font-semibold tracking-tight">SmartQuiz</span>
         </a>
-        <span class="text-xs uppercase tracking-wide text-slate-400">
-          CLI + Web · JSON exams
-        </span>
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase tracking-wide text-muted-foreground hidden md:inline">
+            CLI + Web · JSON exams
+          </span>
+          <button id="theme-toggle" class="p-2 rounded-lg border border-border hover:bg-accent text-muted-foreground hover:text-foreground transition-all" title="Toggle theme">
+            <svg id="sun-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+            </svg>
+            <svg id="moon-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+            </svg>
+          </button>
+        </div>
       </div>
     </header>
 
@@ -25,11 +66,50 @@
       </div>
     </main>
 
-    <footer class="border-t border-slate-800 text-xs text-slate-500">
+    <footer class="border-t border-border text-xs text-muted-foreground">
       <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
         <span>SmartQuiz · Local practice tool</span>
         <span>Built with FastAPI + Tailwind</span>
       </div>
     </footer>
+
+    <!-- JAVASCRIPT SIMPLIFICADO -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const html = document.documentElement;
+        const body = document.body;
+        const themeToggle = document.getElementById('theme-toggle');
+        const sunIcon = document.getElementById('sun-icon');
+        const moonIcon = document.getElementById('moon-icon');
+        
+        let currentTheme = localStorage.getItem('theme') || 
+                          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        
+        function applyTheme(theme) {
+          // Remover clases anteriores
+          html.classList.remove('light', 'dark');
+          body.classList.remove('light', 'dark');
+          
+          // Aplicar nuevo tema
+          html.classList.add(theme);
+          body.classList.add(theme);
+          
+          // Actualizar iconos
+          sunIcon.classList.toggle('hidden', theme !== 'light');
+          moonIcon.classList.toggle('hidden', theme === 'light');
+          
+          localStorage.setItem('theme', theme);
+        }
+        
+        // Aplicar tema inicial
+        applyTheme(currentTheme);
+        
+        // Toggle
+        themeToggle.addEventListener('click', () => {
+          currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+          applyTheme(currentTheme);
+        });
+      });
+    </script>
   </body>
 </html>

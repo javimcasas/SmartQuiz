@@ -4,93 +4,92 @@
 
 {% block content %}
   <div class="mb-6">
-    <a href="/" class="text-sm text-slate-400 hover:text-slate-200">&larr; Back to exams</a>
+    <a href="/" class="text-sm text-muted-foreground hover:text-foreground">&larr; Back to exams</a>
   </div>
 
-  <div class="mb-8">  <!-- mb-8 para más espacio -->
+  <div class="mb-8">
     <h1 class="text-2xl font-semibold tracking-tight">{{ exam.title }}</h1>
-    <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-400">
+    <div class="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
       {% if exam.description %}
         <p>{{ exam.description }}</p>
       {% endif %}
       {% if exam.difficulty %}
         <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
                      {% if exam.difficulty == 'easy' %}
-                       bg-emerald-500/10 text-emerald-300 border border-emerald-500/30
+                       bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
                      {% elif exam.difficulty == 'hard' %}
-                       bg-rose-500/10 text-rose-300 border border-rose-500/30
+                       bg-rose-500/10 text-rose-400 border border-rose-500/30
                      {% else %}
-                       bg-amber-500/10 text-amber-300 border border-amber-500/30
+                       bg-amber-500/10 text-amber-400 border border-amber-500/30
                      {% endif %}">
           {{ exam.difficulty|capitalize }}
         </span>
       {% endif %}
-      <span class="text-xs uppercase tracking-wide text-slate-500">
+      <span class="text-xs uppercase tracking-wide text-muted-foreground">
         {{ exam.questions|length }} questions
       </span>
       {% if exam.time_limit_seconds %}
         {% set hours = (exam.time_limit_seconds // 3600) %}
         {% set mins = ((exam.time_limit_seconds % 3600) // 60) %}
-        <span class="text-xs uppercase tracking-wide text-slate-500 font-mono">
+        <span class="text-xs uppercase tracking-wide text-muted-foreground font-mono">
           ⏱️ {% if hours > 0 %}{{ hours }}h {% endif %}{{ mins }}m
         </span>
       {% endif %}
     </div>
 
     {% if exam.time_limit_seconds %}
-      <div id="timer" class="text-3xl font-mono font-bold text-sky-400 mt-6 mb-6 p-4 bg-slate-900/50 rounded-xl border border-sky-500/30 text-center animate-pulse" data-max-time="{{ exam.time_limit_seconds }}"></div>
+      <div id="timer" class="text-3xl font-mono font-bold text-sky-500 mt-6 mb-6 p-4 bg-muted/50 rounded-xl border border-sky-500/30 text-center animate-pulse" data-max-time="{{ exam.time_limit_seconds }}"></div>
     {% endif %}
   </div>
 
   <form method="post" class="space-y-4" id="examForm">
     {% for q in exam.questions %}
       {% set idx = loop.index0 %}
-      <section class="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+      <section class="rounded-xl border border-border bg-muted/60 p-4">
         <div class="flex items-start justify-between gap-3">
           <div>
-            <h2 class="text-sm font-semibold text-slate-200">
+            <h2 class="text-sm font-semibold text-foreground">
               Q{{ loop.index }}
-              <span class="ml-2 text-xs uppercase tracking-wide text-slate-500">
+              <span class="ml-2 text-xs uppercase tracking-wide text-muted-foreground">
                 {{ q.type }}
               </span>
             </h2>
-            <p class="mt-1 text-sm text-slate-100">
+            <p class="mt-1 text-sm text-foreground">
               {{ q.question }}
             </p>
           </div>
         </div>
 
-        <!-- ID estable -->
         <input type="hidden" name="q{{ idx }}_num" value="{{ q.number }}" />
 
         <div class="mt-3 space-y-2">
           {% if q.type in ["single", "true_false"] %}
             {% for opt in q.options %}
-              <label class="flex items-center gap-2 text-sm text-slate-100 cursor-pointer">
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer hover:bg-accent/50 p-2 rounded-lg transition-colors">
                 <input
                   type="radio"
                   name="q{{ idx }}"
                   value="{{ opt.value }}"
-                  class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-500 focus:ring-sky-500"
+                  class="h-4 w-4 rounded border-border bg-background text-sky-500 focus:ring-sky-500"
                 />
                 <span>
-                  <span class="font-mono text-xs text-slate-400">{{ opt.value }})</span>
+                  <span class="font-mono text-xs text-muted-foreground">{{ opt.value }})</span>
                   {{ opt.text }}
                 </span>
               </label>
             {% endfor %}
 
           {% elif q.type == "multiple" %}
-            <p class="text-xs text-slate-400 mb-1">Select all that apply.</p>
+            <p class="text-xs text-muted-foreground mb-1">Select all that apply.</p>
             {% for opt in q.options %}
-              <label class="flex items-center gap-2 text-sm text-slate-100 cursor-pointer">
+              <label class="flex items-center gap-2 text-sm text-foreground cursor-pointer hover:bg-accent/50 p-2 rounded-lg transition-colors">
                 <input
                   type="checkbox"
                   name="q{{ idx }}_{{ opt.value }}"
-                  class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-sky-500 focus:ring-sky-500"
+                  class="h-4 w-4 rounded border-border bg-background text-sky-500 focus:ring-sky-500"
                 />
                 <span>
-                  <span class="font-mono text-xs text-slate-400">{{ opt.value }})</span>
+                  <span class="font-mono text-xs text-muted-foreground">{{ opt.value }})</span>
                   {{ opt.text }}
                 </span>
               </label>
@@ -100,7 +99,7 @@
             <input
               type="text"
               name="q{{ idx }}"
-              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all"
               placeholder="Type your answer..."
             />
           {% endif %}
@@ -111,7 +110,7 @@
     <div class="pt-2">
       <button
         type="submit"
-        class="inline-flex items-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-slate-900 hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+        class="inline-flex items-center rounded-lg bg-sky-500 hover:bg-sky-400 text-foreground font-medium px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 focus:ring-offset-background transition-all"
       >
         Submit exam
       </button>
@@ -142,10 +141,10 @@
 
         timerEl.textContent = display.trim() || '0s';
         timerEl.className = timeLeft < 60 ? 
-          'text-3xl font-mono font-bold text-rose-400 mb-6 p-4 bg-slate-900/50 rounded-xl border border-rose-500/30 text-center animate-pulse' : 
+          'text-3xl font-mono font-bold text-rose-500 mb-6 p-4 bg-muted/50 rounded-xl border border-rose-500/30 text-center animate-pulse' : 
           (timeLeft < 300 ? 
-            'text-3xl font-mono font-bold text-amber-400 mb-6 p-4 bg-slate-900/50 rounded-xl border border-amber-500/30 text-center animate-pulse' :
-            'text-3xl font-mono font-bold text-sky-400 mb-6 p-4 bg-slate-900/50 rounded-xl border border-sky-500/30 text-center animate-pulse'
+            'text-3xl font-mono font-bold text-amber-500 mb-6 p-4 bg-muted/50 rounded-xl border border-amber-500/30 text-center animate-pulse' :
+            'text-3xl font-mono font-bold text-sky-500 mb-6 p-4 bg-muted/50 rounded-xl border border-sky-500/30 text-center animate-pulse'
           );
       }
 
@@ -156,7 +155,7 @@
         if (timeLeft <= 0) {
           clearInterval(interval);
           timerEl.textContent = '¡Tiempo agotado!';
-          timerEl.className = 'text-3xl font-mono font-bold text-rose-500 mb-6 p-4 bg-slate-900/50 rounded-xl border border-rose-500/30 text-center animate-pulse';
+          timerEl.className = 'text-3xl font-mono font-bold text-rose-500 mb-6 p-4 bg-muted/50 rounded-xl border border-rose-500/30 text-center animate-pulse';
           form.submit();
         }
       }, 1000);

@@ -16,14 +16,17 @@ EXAMS_DIR = BASE_DIR / "exams"
 app = FastAPI()
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
+
 def list_exam_files() -> List[Path]:
     return sorted(EXAMS_DIR.glob("*.json"))
+
 
 def load_exam_by_id(exam_id: str) -> Exam:
     for p in list_exam_files():
         if p.stem == exam_id:
             return load_exam(p)
     raise ValueError(f"Exam '{exam_id}' not found")
+
 
 def grade_exam_by_index(exam: Exam, user_answers_by_index: Dict[int, List[str]]) -> GradeResult:
     per_question: List[QuestionResult] = []
@@ -57,6 +60,33 @@ def grade_exam_by_index(exam: Exam, user_answers_by_index: Dict[int, List[str]])
         per_question=per_question,
     )
 
+
+def get_theme_response(request: Request, template_name: str, context: dict):
+    """Función helper para manejar cookies de tema en todas las respuestas"""
+    theme_cookie = request.cookies.get('theme')
+    
+    # Si no hay cookie, detectar preferencia del navegador
+    if not theme_cookie:
+        # Verificar headers de preferencia de tema
+        prefers_dark = (
+            request.headers.get('sec-ch-prefers-color-scheme') == 'dark' or
+            request.headers.get('prefers-color-scheme') == 'dark'
+        )
+        default_theme = 'dark' if prefers_dark else 'light'
+        response = templates.TemplateResponse(template_name, {**context, "request": request})
+        response.set_cookie(
+            key='theme', 
+            value=default_theme, 
+            httponly=True, 
+            samesite='lax',
+            max_age=365 * 24 * 60 * 60  # 1 año
+        )
+        return response
+    
+    # Cookie existe, pasarla al template
+    return templates.TemplateResponse(template_name, {**context, "request": request})
+
+
 @app.get("/")
 def index(request: Request):
     exams = []
@@ -85,19 +115,17 @@ def index(request: Request):
                 "time_limit_display": time_limit_display,
             }
         )
-    return templates.TemplateResponse("index.html", {"request": request, "exams": exams})
+    return get_theme_response(request, "index.html", {"exams": exams})
+
 
 @app.get("/exam/{exam_id}")
 def show_exam(request: Request, exam_id: str):
     exam = load_exam_by_id(exam_id)
-    return templates.TemplateResponse(
-        "exam.html",
-        {
-            "request": request,
-            "exam_id": exam_id,
-            "exam": exam,
-        },
-    )
+    return get_theme_response(request, "exam.html", {
+        "exam_id": exam_id,
+        "exam": exam
+    })
+
 
 @app.post("/exam/{exam_id}")
 async def submit_exam(request: Request, exam_id: str):
@@ -156,13 +184,9 @@ async def submit_exam(request: Request, exam_id: str):
     n_correct = sum(1 for qr in result.per_question if qr.is_correct)
     n_total = len(result.per_question)
 
-    return templates.TemplateResponse(
-        "result.html",
-        {
-            "request": request,
-            "exam": exam,
-            "result": result,
-            "n_correct": n_correct,
-            "n_total": n_total,
-        },
-    )
+    return get_theme_response(request, "result.html", {
+        "exam": exam,
+        "result": result,
+        "n_correct": n_correct,
+        "n_total": n_total
+    })
