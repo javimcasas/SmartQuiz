@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from quizcore import Exam, Question, load_exam, _check_question_answer, QuestionResult, GradeResult, grade_exam
 
@@ -20,7 +21,9 @@ COMPLETED_DIR = BASE_DIR / "completed"  # Nueva carpeta para resultados
 # Crear directorio si no existe
 COMPLETED_DIR.mkdir(exist_ok=True)
 
+
 app = FastAPI()
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 

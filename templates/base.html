@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <title>{% block title %}SmartQuiz{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Favicon .ico dedicado -->
+    <link rel="icon" type="image/x-icon" href="/static/images/SmartQuiz_Logo.jpg" />
+
     <!-- Tailwind Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -45,9 +49,12 @@
         <!-- Lado izquierdo: Logo + Navegación -->
         <div class="flex items-center gap-4">
           <!-- Logo / Home -->
-          <a href="/" class="flex items-center gap-2 p-1 -m-1 rounded-lg hover:bg-accent transition-all
+          <a href="/" class="flex items-center gap-3 p-1 -m-1 rounded-lg hover:bg-accent transition-all
              {% if request.path == '/' %}font-semibold underline decoration-foreground underline-offset-4{% else %}hover:underline{% endif %}">
-            <span class="text-xl font-semibold tracking-tight">SmartQuiz</span>
+            <img src="/static/images/SmartQuiz_Logo.jpg"
+                 alt="SmartQuiz"
+                 class="h-10 w-10 rounded-xl shadow-sm" />
+            <span class="text-2xl font-semibold tracking-tight">SmartQuiz</span>
           </a>
           
           <!-- Botón Completed Exams -->
