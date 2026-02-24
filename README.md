@@ -27,7 +27,6 @@
 Exam list → Form → Scored result
 ```
 
-![screenshot](https://via.placeholder.com/1200x600/0f172a/64748b?text=SmartQuiz+Web+Demo)
 
 ### CLI Runner
 
