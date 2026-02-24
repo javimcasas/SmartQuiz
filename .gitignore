@@ -135,6 +135,7 @@ dmypy.json
 # Exams (solo template, no datos personales)
 exams/*.json
 !exams/template-exam.json
+!exams/template-exam-single.json
 completed/*.json
 
 # Logs

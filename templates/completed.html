@@ -26,16 +26,19 @@
         </p>
         {% endif %}
         <div class="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{{ "%.1f"|format(c.percentage) }}% ({{ c.total_points }}/{{ c.max_points }})</span>
+          <span>{{ "%.1f"|format(c.percentage) }}% 
+            <span class="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold font-mono
+              {% if c.total_points >= c.passing_score %}bg-emerald-500/20 text-emerald-500 border border-emerald-500/30
+              {% else %}bg-rose-500/20 text-rose-500 border border-rose-500/30{% endif %}">
+              {{ "✅ PASS" if c.total_points >= c.passing_score else "❌ FAIL" }}
+            </span>
+          </span>
+          <span>({{ c.total_points }}/{{ c.max_points }}) · {{ c.passing_score }} min</span>
           {% if c.difficulty %}
           <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                      {% if c.difficulty == 'easy' %}
-                        bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
-                      {% elif c.difficulty == 'hard' %}
-                        bg-rose-500/10 text-rose-400 border border-rose-500/30
-                      {% else %}
-                        bg-amber-500/10 text-amber-400 border border-amber-500/30
-                      {% endif %}">
+                      {% if c.difficulty == 'easy' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                      {% elif c.difficulty == 'hard' %}bg-rose-500/10 text-rose-400 border border-rose-500/30
+                      {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/30{% endif %}">
             {{ c.difficulty|capitalize }}
           </span>
           {% endif %}

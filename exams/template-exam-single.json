@@ -1,10 +1,11 @@
 {
   "id": "template-exam",
-  "title": "SmartQuiz Template - All Question Types",
+  "title": "SmartQuiz Simple Template - All Question Types",
   "description": "Template file showing all supported question types with examples and explanations. Copy, edit and rename to create your own exams.",
   "difficulty": "medium",
   "shuffle_questions": true,
   "time_limit_seconds": 1800,
+  "format": "single",
   "passing_score": 3.0,
   "questions": [
     {

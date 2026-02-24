@@ -53,7 +53,8 @@ def list_completed_exams() -> List[Dict[str, Any]]:
                     "percentage": data["percentage"],
                     "total_points": data["total_points"],
                     "max_points": data["max_points"],
-                    "result_file": result_file.name
+                    "result_file": result_file.name,
+                    "passing_score": getattr(exam, 'passing_score', 0.0)
                 })
         except (json.JSONDecodeError, KeyError, ValueError):
             # Ignorar archivos corruptos
@@ -106,7 +107,8 @@ def save_completed_exam(exam: Exam, result: GradeResult) -> str:
         "total_points": result.total_points,
         "max_points": result.max_points,
         "percentage": result.percentage,
-        "per_question": per_question_full
+        "per_question": per_question_full,
+        "passing_score": getattr(exam, 'passing_score', 0.0)
     }
     
     result_file = COMPLETED_DIR / f"{completion_id}.json"
@@ -214,6 +216,7 @@ def index(request: Request):
             "description": exam.description,
             "difficulty": exam.difficulty,
             "time_limit_display": time_limit_display,
+            "passing_score": getattr(exam, 'passing_score', 0.0)
         })
     context = {"exams": exams}
     return get_theme_response(request, "index.html", context)
