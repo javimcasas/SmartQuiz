@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
@@ -25,8 +25,6 @@ COMPLETED_DIR = BASE_DIR / "completed"
 
 # Crear directorio si no existe
 COMPLETED_DIR.mkdir(exist_ok=True)
-
-       
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
@@ -107,7 +105,6 @@ async def call_ai_api(prompt: str) -> str:
             
             data = await resp.json()
             return data["choices"][0]["message"]["content"]
-
 
 
 def list_exam_files() -> List[Path]:
@@ -200,6 +197,7 @@ def save_completed_exam(exam: Exam, result: GradeResult) -> str:
     
     return completion_id
 
+
 def load_completed_exam(completion_id: str) -> Dict[str, Any]:
     """Carga un examen completado por su ID"""
     result_file = COMPLETED_DIR / f"{completion_id}.json"
@@ -231,6 +229,7 @@ def get_theme_response(request: Request, template_name: str, context: dict):
         return response
     
     return templates.TemplateResponse(template_name, {**context, "request": request})
+
 
 def import_exam(file: UploadFile) -> str:
     """Importa un archivo JSON como examen nuevo"""
@@ -336,6 +335,7 @@ def completed_detail(request: Request, completion_id: str):
     except ValueError:
         return RedirectResponse("/", status_code=302)
 
+
 @app.get("/api/completed/count")
 def get_completed_count() -> Dict[str, int]:
     """API simple para contador de exámenes completados"""
@@ -350,6 +350,31 @@ def show_exam(request: Request, exam_id: str):
         "exam_id": exam_id,
         "exam": exam
     })
+
+
+@app.delete("/exam/{exam_id}")
+def delete_exam(exam_id: str):
+    """
+    Borra el archivo JSON del examen en exams/ por su ID.
+    Devuelve JSON para consumo vía fetch en el frontend.
+    """
+    exam_path = EXAMS_DIR / f"{exam_id}.json"
+    if not exam_path.exists():
+        raise HTTPException(status_code=404, detail="Exam not found")
+
+    try:
+        exam = load_exam(exam_path)
+        title = getattr(exam, "title", exam_id)
+    except Exception:
+        # Si hay problema cargando, igualmente intentamos borrar
+        title = exam_id
+
+    try:
+        exam_path.unlink()
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Could not delete exam file: {e}")
+
+    return JSONResponse({"message": f"Exam '{title}' deleted successfully"})
 
 
 @app.post("/exam/{exam_id}")
@@ -432,9 +457,11 @@ async def upload_exam(file: UploadFile = File(...)):
 def upload_form(request: Request):
     return get_theme_response(request, "upload.html", {})
 
+
 @app.get("/generate")
 def generate_form(request: Request):
     return get_theme_response(request, "generate.html", {})
+
 
 @app.post("/generate-exam")
 async def generate_exam(

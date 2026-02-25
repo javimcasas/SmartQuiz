@@ -3,9 +3,16 @@
 {% block title %}SmartQuiz · Exams{% endblock %}
 
 {% block content %}
-  {% if request.query_params.get('success') %}
-  <div class="mb-8 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 animate-in fade-in duration-500">
-    {{ request.query_params.get('success') }}
+  <!-- 🚀 NOTIFICACIONES TEMPORALES (se auto-eliminan) -->
+  {% if request.query_params.get('success') or request.query_params.get('temp_success') %}
+  <div id="successNotification" class="mb-8 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 animate-in fade-in duration-500">
+    {{ request.query_params.get('success') or request.query_params.get('temp_success') }}
+  </div>
+  {% endif %}
+
+  {% if request.query_params.get('error') or request.query_params.get('temp_error') %}
+  <div id="errorNotification" class="mb-8 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-800 dark:text-rose-200 animate-in fade-in duration-500">
+    {{ request.query_params.get('error') or request.query_params.get('temp_error') }}
   </div>
   {% endif %}
 
@@ -21,13 +28,13 @@
   <!-- 🚀 TARJETA DE IMPORTACIÓN PREMIUM -->
   <div class="mb-6">
     <form id="uploadForm" class="relative rounded-xl border-2 border-dashed border-border bg-gradient-to-br from-muted/50 to-muted hover:border-sky-400 hover:from-sky-500/10 hover:to-blue-500/10 transition-all duration-300 p-8 text-center group cursor-pointer hover:shadow-xl">
-      
+     
       <!-- Input file oculto -->
       <input type="file" name="file" id="fileInput" accept=".json" class="sr-only" required>
-      
+     
       <!-- Label invisible para click -->
       <label for="fileInput" class="absolute inset-0 w-full h-full cursor-pointer rounded-xl"></label>
-      
+     
       <div class="relative z-10 flex flex-col items-center justify-center space-y-4 pointer-events-none">
         <!-- Icono animado -->
         <div class="w-20 h-20 bg-sky-500/10 group-hover:bg-sky-500/20 border-2 border-sky-500/30 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110">
@@ -42,16 +49,16 @@
           <p class="text-xs text-muted-foreground/70 font-mono bg-muted/50 px-2 py-0.5 rounded">.json only</p>
         </div>
       </div>
-      
+     
       <!-- Drag feedback -->
       <p id="dragText" class="text-sm font-medium text-sky-500 mt-2 hidden transition-opacity">📁 Drop to upload...</p>
-      
+     
       <!-- Loading spinner -->
       <div id="loadingSpinner" class="hidden mt-4">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
         <p class="text-sm text-sky-500 mt-2">Importing exam...</p>
       </div>
-      
+     
       <!-- ✅ Success / ❌ Error messages -->
       <div id="uploadMessage" class="mt-4 hidden">
         <div id="successMsg" class="hidden p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-sm font-medium"></div>
@@ -63,35 +70,58 @@
   {% if exams %}
     <div class="grid gap-4 md:grid-cols-2">
       {% for e in exams %}
-        <a href="/exam/{{ e.id }}" class="block rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4">
-          <div class="flex items-start justify-between gap-2">
-            <div class="flex-1">
-              <h2 class="text-lg font-medium text-foreground">{{ e.title }}</h2>
-              {% if e.description %}
-                <p class="mt-1 text-sm text-muted-foreground line-clamp-3">
-                  {{ e.description }}
-                </p>
-              {% endif %}
-              {% if e.time_limit_display %}
-                <p class="mt-2 text-xs text-muted-foreground font-mono flex items-center gap-1">
-                  {{ e.time_limit_display }}
-                </p>
-              {% endif %}
-            </div>
-            {% if e.difficulty %}
-              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                           {% if e.difficulty == 'easy' %}
-                             bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
-                           {% elif e.difficulty == 'hard' %}
-                             bg-rose-500/10 text-rose-400 border border-rose-500/30
-                           {% else %}
-                             bg-amber-500/10 text-amber-400 border border-amber-500/30
-                           {% endif %}">
-                {{ e.difficulty|capitalize }}
-              </span>
+        <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer">
+          <!-- 🎯 Overlay click COMPLETO - z-20 sobre todo -->
+          <a href="/exam/{{ e.id }}" class="absolute inset-0 z-20 rounded-xl block"></a>
+
+          <div class="relative z-10 flex flex-col h-full">
+            <!-- 📝 Título principal -->
+            <h2 class="text-lg font-medium text-foreground mb-3 line-clamp-2 leading-tight" title="{{ e.title }}">
+              {{ e.title }}
+            </h2>
+
+            <!-- 📄 Descripción -->
+            {% if e.description %}
+              <p class="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed flex-1 min-h-0">
+                {{ e.description }}
+              </p>
             {% endif %}
+
+            <!-- 🔽 Footer con tags + botón -->
+            <div class="flex items-center justify-between gap-2 pt-3 border-t border-border/50 mt-auto">
+              <!-- Tags izquierda -->
+              <div class="flex items-center gap-2 flex-wrap">
+                {% if e.difficulty %}
+                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                               {% if e.difficulty == 'easy' %}
+                                 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                               {% elif e.difficulty == 'hard' %}
+                                 bg-rose-500/10 text-rose-400 border border-rose-500/30
+                               {% else %}
+                                 bg-amber-500/10 text-amber-400 border border-amber-500/30
+                               {% endif %}">
+                    {{ e.difficulty|capitalize }}
+                  </span>
+                {% endif %}
+                {% if e.time_limit_display %}
+                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/30 font-mono">
+                    {{ e.time_limit_display }}
+                  </span>
+                {% endif %}
+              </div>
+              
+              <!-- ❌ Botón Delete - Estilo tag rectangular redondeado -->
+              <button
+                type="button"
+                class="flex-shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-medium border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/40 whitespace-nowrap"
+                onclick="event.stopPropagation(); event.preventDefault(); confirmDeleteExam('{{ e.id }}', '{{ e.title | replace('\'', '\\\'') }}');"
+                title="Delete exam"
+              >
+                Delete
+              </button>
+            </div>
           </div>
-        </a>
+        </div>
       {% endfor %}
     </div>
   {% else %}
@@ -103,9 +133,24 @@
     </div>
   {% endif %}
 
-  <!-- 🚀 SCRIPT AJAX PERFECTIONADO -->
+  <!-- 🚀 SCRIPT MEJORADO -->
   <script>
   (function() {
+    // 🔄 Auto-eliminar notificaciones después de 5 segundos
+    const successNotif = document.getElementById('successNotification');
+    const errorNotif = document.getElementById('errorNotification');
+    
+    [successNotif, errorNotif].forEach(notif => {
+      if (notif) {
+        setTimeout(() => {
+          notif.style.transition = 'opacity 500ms ease-out, transform 500ms ease-out';
+          notif.style.opacity = '0';
+          notif.style.transform = 'translateY(-10px)';
+          setTimeout(() => notif.remove(), 500);
+        }, 5000);
+      }
+    });
+
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const dragText = document.getElementById('dragText');
@@ -114,7 +159,7 @@
     const errorMsg = document.getElementById('errorMsg');
     const uploadMessage = document.getElementById('uploadMessage');
 
-    // Drag & Drop - SOLO en tarjeta
+    // Drag & Drop
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
       form.addEventListener(eventName, preventDefaults, false);
     });
@@ -149,13 +194,10 @@
       }
     }
 
-    // Click funciona via label
     fileInput.addEventListener('change', uploadFile);
 
     async function uploadFile() {
       if (fileInput.files.length === 0) return;
-
-      // UI: Loading
       loadingSpinner.classList.remove('hidden');
       dragText.classList.add('hidden');
       form.classList.add('opacity-75', 'pointer-events-none');
@@ -164,16 +206,11 @@
       formData.append('file', fileInput.files[0]);
 
       try {
-        const response = await fetch('/upload-exam', {
-          method: 'POST',
-          body: formData
-        });
-
+        const response = await fetch('/upload-exam', { method: 'POST', body: formData });
         const result = await response.json();
 
         if (result.success) {
           showMessage(`✅ ${result.message}`, 'success');
-          // Auto-recarga para mostrar nuevo examen
           setTimeout(() => window.location.reload(), 1500);
         } else {
           throw new Error(result.detail || 'Upload failed');
@@ -181,7 +218,6 @@
       } catch (error) {
         showMessage(`❌ ${error.message}`, 'error');
       } finally {
-        // Reset
         form.classList.remove('opacity-75', 'pointer-events-none');
         loadingSpinner.classList.add('hidden');
         fileInput.value = '';
@@ -190,7 +226,6 @@
 
     function showMessage(text, type) {
       uploadMessage.classList.remove('hidden');
-      
       if (type === 'success') {
         successMsg.textContent = text;
         successMsg.classList.remove('hidden');
@@ -200,14 +235,32 @@
         errorMsg.classList.remove('hidden');
         successMsg.classList.add('hidden');
       }
-
-      // Auto-ocultar
       setTimeout(() => {
         uploadMessage.classList.add('hidden');
         successMsg.classList.add('hidden');
         errorMsg.classList.add('hidden');
       }, 4000);
     }
+
+    // 🗑 Delete exam - Limpio
+    window.confirmDeleteExam = function(examId, examTitle) {
+      const msg = `¿Estás seguro de que quieres eliminar "${examTitle}"? Esta acción no se puede deshacer.`;
+      if (!window.confirm(msg)) return;
+
+      fetch(`/exam/${examId}`, {
+        method: 'DELETE',
+        headers: { 'Accept': 'application/json' }
+      }).then(async (res) => {
+        if (res.ok) {
+          window.location.href = `/?success=${encodeURIComponent('✅ Examen eliminado correctamente')}&nocache=${Date.now()}`;
+        } else {
+          const data = await res.json().catch(() => ({}));
+          window.location.href = `/?error=${encodeURIComponent('❌ ' + (data.detail || 'Error al eliminar'))}&nocache=${Date.now()}`;
+        }
+      }).catch(() => {
+        window.location.href = `/?error=${encodeURIComponent('❌ Error de conexión')}&nocache=${Date.now()}`;
+      });
+    };
   })();
   </script>
 {% endblock %}
