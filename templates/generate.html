@@ -20,7 +20,7 @@
     </p>
   </div>
 
-  <form method="POST" action="/generate-exam" class="space-y-6">
+  <form id="generateForm" method="POST" action="/generate-exam" class="space-y-6">
     <!-- 1. Título -->
     <div>
       <label class="block text-sm font-medium mb-2">Exam Title</label>
@@ -129,11 +129,139 @@
       </div>
     </div>
 
-    <!-- Submit -->
-    <button type="submit" 
-            class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-4 px-8 rounded-2xl text-lg shadow-2xl hover:from-purple-600 hover:to-pink-600 focus:ring-4 focus:ring-purple-500/50 transition-all transform hover:-translate-y-0.5">
-      ✨ Generate Exam with AI
+    <!-- Submit con loading states -->
+    <button type="submit"
+            class="generate-btn w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-4 px-8 rounded-2xl text-lg shadow-2xl hover:from-purple-600 hover:to-pink-600 focus:ring-4 focus:ring-purple-500/50 transition-all transform hover:-translate-y-0.5 relative overflow-hidden group">
+      <span class="btn-text flex items-center justify-center gap-2">
+        ✨ Generate Exam with AI
+      </span>
+      <div class="loading-overlay absolute inset-0 bg-gradient-to-r from-purple-500/90 to-pink-500/90 flex items-center justify-center opacity-0 invisible group-loading:opacity-100 group-loading:visible transition-all duration-300">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
+          <div class="text-white text-sm font-medium tracking-tight">
+            <div>Generating exam with AI...</div>
+            <div class="text-xs opacity-90 mt-1">This may take 30-90 seconds</div>
+          </div>
+        </div>
+      </div>
     </button>
   </form>
+
+  <!-- Progress bar animada -->
+  <div id="progressContainer" class="hidden mt-6 p-6 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 rounded-3xl backdrop-blur-md shadow-2xl">
+    <div class="flex items-center justify-between mb-4">
+      <span class="text-base font-semibold text-purple-600">🤖 AI Processing</span>
+      <span id="progressText" class="text-lg font-bold text-purple-500 bg-purple-100 px-3 py-1 rounded-full">0%</span>
+    </div>
+    <div class="w-full bg-gradient-to-r from-purple-100 to-pink-100 rounded-2xl h-4 overflow-hidden border border-purple-200">
+      <div id="progressBar" class="bg-gradient-to-r from-purple-500 via-purple-600 to-pink-500 h-4 rounded-2xl shadow-lg transition-all duration-500 ease-out flex items-center justify-center" style="width: 0%">
+        <span id="progressLabel" class="text-white text-xs font-bold hidden">0%</span>
+      </div>
+    </div>
+    <p id="progressMessage" class="text-sm text-purple-600 mt-4 text-center font-medium animate-pulse">
+      Initializing AI generation ✨
+    </p>
+  </div>
 </div>
+
+<script>
+document.getElementById('generateForm').addEventListener('submit', function(e) {
+  const btn = document.querySelector('.generate-btn');
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  const progressText = document.getElementById('progressText');
+  const progressLabel = document.getElementById('progressLabel');
+  const progressMessage = document.getElementById('progressMessage');
+  
+  // Activar loading en botón
+  btn.classList.add('group-loading');
+  
+  // Mostrar progress bar inmediatamente con scroll suave
+  progressContainer.classList.remove('hidden');
+  
+  // Scroll suave hacia la barra de progreso (offset para que no quede pegada arriba)
+  progressContainer.scrollIntoView({ 
+    behavior: 'smooth', 
+    block: 'center',
+    inline: 'nearest'
+  });
+  
+  // Fases del progreso con mensajes realistas
+  const phases = [
+    { percent: 10, message: "Analyzing your request ✨", duration: 1000 },
+    { percent: 25, message: "Designing question structure 📝", duration: 1500 },
+    { percent: 40, message: "Generating content with AI 🧠", duration: 2000 },
+    { percent: 60, message: "Creating multiple choice options 🎯", duration: 2500 },
+    { percent: 75, message: "Adding explanations & validation ✅", duration: 2000 },
+    { percent: 90, message: "Finalizing exam format 📄", duration: 1500 },
+    { percent: 100, message: "Exam ready! Redirecting...", duration: 500 }
+  ];
+  
+  let currentPhase = 0;
+  
+  function updateProgress(targetPercent, message, isFinal = false) {
+    progressBar.style.width = targetPercent + '%';
+    progressText.textContent = targetPercent + '%';
+    progressLabel.textContent = targetPercent + '%';
+    progressLabel.classList.toggle('hidden', targetPercent < 20);
+    progressMessage.textContent = message;
+    
+    // Efecto shimmer cuando llega al 100%
+    if (isFinal) {
+      progressBar.classList.add('animate-pulse');
+    }
+  }
+  
+  // Iniciar animación de progreso por fases
+  function nextPhase() {
+    if (currentPhase < phases.length) {
+      const phase = phases[currentPhase];
+      setTimeout(() => {
+        updateProgress(phase.percent, phase.message, currentPhase === phases.length - 1);
+        currentPhase++;
+        nextPhase();
+      }, phase.duration);
+    }
+  }
+  
+  // Comenzar con 0% visible
+  updateProgress(0, phases[0].message);
+  
+  // Iniciar secuencia de fases
+  setTimeout(nextPhase, 500);
+  
+  // Cleanup en caso de cancelación
+  const cleanup = () => {
+    window.removeEventListener('beforeunload', cleanup);
+  };
+  window.addEventListener('beforeunload', cleanup);
+});
+</script>
+
+<style>
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes progressGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(168, 85, 247, 0.5); }
+  50% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.8); }
+}
+
+.loading-overlay {
+  background-image: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+#progressBar {
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  animation: shimmer 2s infinite;
+}
+
+#progressBar.animate-pulse {
+  animation: progressGlow 1.5s infinite;
+}
+</style>
 {% endblock %}
