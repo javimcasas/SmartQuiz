@@ -1,8 +1,10 @@
 # web_app.py
 from __future__ import annotations
+import os
 import json
 import uuid
 import tempfile
+import aiohttp
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -14,17 +16,98 @@ from fastapi.staticfiles import StaticFiles
 
 from quizcore import Exam, Question, load_exam, _check_question_answer, QuestionResult, GradeResult, grade_exam
 
+from dotenv import load_dotenv
+load_dotenv()
+
 BASE_DIR = Path(__file__).parent
 EXAMS_DIR = BASE_DIR / "exams"
-COMPLETED_DIR = BASE_DIR / "completed"  # Nueva carpeta para resultados
+COMPLETED_DIR = BASE_DIR / "completed"
 
 # Crear directorio si no existe
 COMPLETED_DIR.mkdir(exist_ok=True)
 
+       
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+
+async def call_ai_api(prompt: str) -> str:
+    api_key = os.getenv("PERPLEXITY_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Missing PERPLEXITY_API_KEY")
+
+    url = "https://api.perplexity.ai/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    
+    # ✅ JSON SCHEMA EXAM STRUCT
+    exam_schema = {
+        "type": "object",
+        "properties": {
+            "id": {"type": "string"},
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+            "difficulty": {"type": "string"},
+            "shuffle_questions": {"type": "boolean"},
+            "time_limit_seconds": {"type": "integer"},
+            "format": {"type": "string"},
+            "passing_score": {"type": "number"},
+            "questions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "number": {"type": "integer"},
+                        "type": {"type": "string", "enum": ["single", "multiple", "true_false", "fill_blank"]},
+                        "question": {"type": "string"},
+                        "options": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "value": {"type": "string"},
+                                    "text": {"type": "string"},
+                                    "description": {"type": "string"}
+                                },
+                                "required": ["value", "text"]
+                            }
+                        },
+                        "correct": {"type": "array", "items": {"type": "string"}},
+                        "points": {"type": "number"}
+                    },
+                    "required": ["number", "type", "question", "options", "correct", "points"]
+                }
+            }
+        },
+        "required": ["id", "title", "description", "difficulty", "questions"],
+        "additionalProperties": False
+    }
+    
+    payload = {
+        "model": "sonar",
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 4000,
+        "temperature": 0.1,
+        "response_format": {  # ✅ NATIVE JSON!
+            "type": "json_schema",
+            "json_schema": {
+                "name": "smartquiz_exam",
+                "schema": exam_schema
+            }
+        }
+    }
+
+    timeout = aiohttp.ClientTimeout(total=90)
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.post(url, headers=headers, json=payload) as resp:
+            if resp.status >= 400:
+                err_text = await resp.text()
+                raise HTTPException(status_code=502, detail=f"Perplexity {resp.status}: {err_text[:300]}")
+            
+            data = await resp.json()
+            return data["choices"][0]["message"]["content"]
+
 
 
 def list_exam_files() -> List[Path]:
@@ -352,3 +435,76 @@ def upload_form(request: Request):
 @app.get("/generate")
 def generate_form(request: Request):
     return get_theme_response(request, "generate.html", {})
+
+@app.post("/generate-exam")
+async def generate_exam(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(...),  # ← Prompt principal para IA
+    num_questions: int = Form(...),
+    difficulty: str = Form(...),
+    types: List[str] = Form(...),  # Multi-select
+    time_limit_seconds: Optional[int] = Form(0),
+    passing_score: float = Form(...),
+    total_points: float = Form(...),
+    format: str = Form("multiple")
+):
+    # 🎯 1. Prompt para IA (tu API)
+    prompt = f"""Generate EXACTLY {num_questions} SmartQuiz questions about "{description}".
+
+CRITICAL RULES:
+1. EXACTLY {num_questions} questions (numbered 1-N)
+2. Types ONLY: {','.join(types)} 
+3. 4 options A/B/C/D (except fill_blank/true_false)
+4. "correct": ["a"] o ["a","b"] array
+5. Points: {total_points/num_questions:.1f} cada una
+6. Explanations SOLO en "description" de opción correcta
+7. NO markdown, NO texto extra, NO ```json
+
+RESPUESTA JSONSchema VÁLIDO ÚNICAMENTE:
+
+{{
+  "id": "ai-{uuid.uuid4().hex[:8]}",
+  "title": "{title}",
+  "description": "{description}",
+  "difficulty": "{difficulty}",
+  "shuffle_questions": true,
+  "time_limit_seconds": {time_limit_seconds},
+  "format": "{format}",
+  "passing_score": {passing_score},
+  "questions": [ /* {num_questions} objetos */ ]
+}}"""
+
+    try:
+        # 🎯 2. Llamada a IA (ejemplo con mi API interna)
+        ai_response = await call_ai_api(prompt)  # ← Implementar esto
+        
+        # 🎯 3. Parse + validar
+        raw_exam = json.loads(ai_response)
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False, encoding='utf-8') as temp:
+            json.dump(raw_exam, temp, indent=2, ensure_ascii=False)
+            temp_path = Path(temp.name)
+        
+        exam = load_exam(temp_path)  # ← Valida estructura
+        temp_path.unlink()
+        
+        # 🎯 4. Guardar en exams/
+        exam_id = raw_exam.get("id", f"ai-{uuid.uuid4().hex[:8]}")
+        counter = 1
+        output_path = EXAMS_DIR / f"{exam_id}.json"
+        while output_path.exists():
+            exam_id = f"{raw_exam.get('id', 'ai-generated')}-{counter}"
+            output_path = EXAMS_DIR / f"{exam_id}.json"
+            counter += 1
+        
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(raw_exam, f, indent=2, ensure_ascii=False)
+        
+        # 🎯 5. Feedback + redirect
+        success_msg = f"✅ Exam '{title}' generated successfully!"  # Usa 'title' no exam.title
+        return RedirectResponse(f"/?success={success_msg.replace(' ', '%20')}&exam_id={exam_id}", status_code=303)
+    
+    except json.JSONDecodeError:
+        raise HTTPException(400, "AI generated invalid JSON format")
+    except Exception as e:
+        raise HTTPException(500, f"Generation failed: {str(e)}")

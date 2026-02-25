@@ -3,6 +3,12 @@
 {% block title %}SmartQuiz · Exams{% endblock %}
 
 {% block content %}
+  {% if request.query_params.get('success') %}
+  <div class="mb-8 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 animate-in fade-in duration-500">
+    {{ request.query_params.get('success') }}
+  </div>
+  {% endif %}
+
   <div class="flex items-center justify-between mb-6">
     <div>
       <h1 class="text-2xl font-semibold tracking-tight">Available exams</h1>
