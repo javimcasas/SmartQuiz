@@ -348,3 +348,7 @@ async def upload_exam(file: UploadFile = File(...)):
 @app.get("/upload")
 def upload_form(request: Request):
     return get_theme_response(request, "upload.html", {})
+
+@app.get("/generate")
+def generate_form(request: Request):
+    return get_theme_response(request, "generate.html", {})
