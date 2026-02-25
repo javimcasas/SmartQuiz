@@ -1,121 +1,168 @@
 
 # SmartQuiz 🚀
 
-**SmartQuiz** is a practice quiz application that supports **CLI** and **Web**, with exams in **plain JSON**. Perfect for preparing technical certifications (HCIE, CCNA, etc.) or internal training.
+**SmartQuiz** is a **full-featured quiz application** with **CLI** and **modern Web UI**, supporting **AI-generated exams**, **completed results tracking**, and **plain JSON** format. Perfect for technical certifications (HCIE, CCNA, etc.) or knowledge testing.
 
 ## ✨ Features
 
-- **Native CLI** (Python): interactive runner with navigation (next/prev/goto), question shuffling, automatic grading.
-- **Modern Web interface**: Tailwind CSS, responsive, forms for all question types.
-- **Unified engine**: same logic for CLI and Web (same JSON → same grading).
-- **Question types**:
-  - Single choice / True/False
-  - Multiple choice
-  - Fill-in-the-blank
-- **JSON exams** with:
-  - Title, description, difficulty
-  - Automatic shuffle
-  - Points per question
-  - Optional explanations
-- **Full grading**: total points, correct percentage, per-question details.
+### 🎯 Core
 
-## 🎯 Demo
+- **Native CLI** + **Responsive Web UI** (FastAPI + Tailwind CSS)
+- **Unified engine**: Same logic for CLI/Web (same JSON → same grading)
+- **Question types**: Single choice, True/False, Multiple choice, Fill-in-the-blank
+- **Automatic grading** with detailed results per question
+- **Lists ordered by recency**: Available exams & completed sessions
 
-### Web UI
+### 🤖 AI-Powered Exam Generation
 
-```
-Exam list → Form → Scored result
-```
+- **Perplexity AI integration** (`sonar` model + JSON Schema)
+- **Generate exams** from any topic with custom difficulty, question count, types
+- **Strict JSON Schema validation** ensuring perfect compatibility
 
+### 📊 Results Tracking
 
-### CLI Runner
+- **Auto-save completed exams** to `completed/` folder
+- **Full results storage**: Questions, answers, points, explanations
+- **PASS/FAIL badges** based on `passing_score`
+- **Review sessions** with detailed per-question feedback
 
-```
-Available exams:
-  1) hcie-storage-mock-01.json
-Select exam number: 1
+### 📱 Web UI Features
 
-Loaded exam: Huawei HCIE-Storage Practice Exam
-Q1 [multiple] Which OceanStor features...
-Commands: n=next, p=previous, g<num>, s=submit
-[Q1]> a,c
-```
+- **Drag & drop JSON import**
+- **Delete exams** with confirmation
+- **Theme support** (auto-detect dark/light)
+- **Temporary notifications** (auto-fade)
+- **Mobile responsive cards**
 
-## 🚀 Quick start
-
-```bash
-# 1. Clone the repo
-git clone https://github.com/javimcasas/SmartQuiz.git
-cd SmartQuiz
-
-# 2. Install dependencies (web only)
-pip install fastapi uvicorn jinja2
-
-# 3. Add exams to exams/
-# (e.g. copy the HCIE Storage JSON exam)
-
-# 4. CLI (always works)
-python quiz_runner.py
-
-# 5. Web (optional)
-uvicorn web_app:app --reload
-# Open http://127.0.0.1:8000/
-```
-
-## 📁 Project structure
-
-```
-SmartQuiz/
-├── exams/                 # Your exam JSON files
-│   └── hcie-storage-mock-01.json
-├── quizcore.py            # Core engine (quiz logic)
-├── quiz_runner.py         # CLI runner
-├── web_app.py             # FastAPI + Jinja2 + Tailwind
-├── templates/             # HTML views
-└── README.md
-```
-
-## 📖 JSON exam format
+## 📊 Exam Schema (JSON)
 
 ```json
 {
   "id": "my-exam",
-  "title": "My Practice Exam",
-  "difficulty": "hard",
+  "title": "Practice Exam",
+  "description": "Exam description",
+  "difficulty": "easy|medium|hard",
   "shuffle_questions": true,
+  "time_limit_seconds": 3600,
+  "format": "multiple",
+  "passing_score": 80.0,
   "questions": [
     {
       "number": 1,
-      "type": "single",     // "true_false", "single", "multiple", "fill_blank"
+      "type": "single",           // "single", "multiple", "true_false", "fill_blank"
       "question": "What is...",
-      "options": [{"value": "a", "text": "..."}],
+      "options": [
+        {"value": "a", "text": "Option A", "description": "Explanation"},
+        {"value": "b", "text": "Option B"}
+      ],
       "correct": ["a"],
-      "points": 2
+      "points": 2,
+      "case_sensitive": false     // fill_blank only
     }
   ]
 }
 ```
 
+## 🚀 Quick Start
+
+### 1. Clone & Setup
+
+```bash
+git clone https://github.com/javimcasas/SmartQuiz.git
+cd SmartQuiz
+```
+
+### 2. Web Dependencies
+
+```bash
+pip install fastapi uvicorn jinja2 aiohttp python-dotenv
+```
+
+### 3. **AI Generation** (Optional but recommended)
+
+```bash
+# Create .env file
+echo "PERPLEXITY_API_KEY=your_api_key_here" > .env
+```
+
+Get your key at [perplexity.ai](https://www.perplexity.ai/)
+
+### 4. Run
+
+```bash
+# CLI (no dependencies needed)
+python quiz_runner.py
+
+# Web UI
+uvicorn web_app:app --reload
+# Open http://127.0.0.1:8000/
+```
+
+## 📁 Project Structure
+
+```
+SmartQuiz/
+├── exams/              # 📚 Available exam JSON files (ordered by creation)
+├── completed/          # 🏆 Completed sessions (ordered by completion time)
+├── quizcore.py         # Core engine + validation
+├── web_app.py          # FastAPI Web UI + Perplexity AI
+├── templates/          # Jinja2 + Tailwind UI
+├── static/             # CSS/JS
+├── .env               # PERPLEXITY_API_KEY (AI generation)
+└── README.md
+```
+
+## 🎮 Usage
+
+### Web Flow
+
+```
+Home (/): Available exams (newest first) → Generate/Import → Practice → Results
+Completed (/completed): Review sessions (newest first) → Detailed review
+```
+
+### Generate Exam (AI ✨)
+
+```
+POST /generate-exam:
+- title: "HCIE Storage"
+- description: "Huawei OceanStor Dorado features"
+- num_questions: 20
+- difficulty: "hard"
+- types: ["single", "multiple"]
+- passing_score: 75.0
+→ AI generates valid JSON exam instantly!
+```
+
+### CLI Flow
+
+```
+python quiz_runner.py
+→ Select exam → Answer interactively → Auto-grade + detailed results
+```
+
 ## 🛠️ Development
 
 ```bash
-# Pure CLI (no extra dependencies)
-python quiz_runner.py
-
-# Web with hot reload
+# Hot reload web
 uvicorn web_app:app --reload
 
-# Add a new exam
-# → Copy a JSON file into exams/, reload the page
+# Add exam manually
+cp my-exam.json exams/
+
+# AI generation requires .env with PERPLEXITY_API_KEY
 ```
 
 ## 🔮 Roadmap
 
-- [ ] Web editor to create JSON exams
-- [ ] Export results to CSV/PDF
-- [ ] Multi-language support
-- [ ] Full REST API
-- [ ] Docker deployment
+- [X] AI exam generation (Perplexity + JSON Schema)
+- [X] Completed results tracking + review
+- [X] Passing score + PASS/FAIL badges
+- [X] Exams ordered by creation time
+- [ ] Web editor (JSON builder)
+- [ ] Results export (CSV/PDF)
+- [ ] Multi-language
+- [ ] Docker
 
 ## 📄 License
 
@@ -124,3 +171,5 @@ MIT License – see `LICENSE`.
 ---
 
 **Made with ❤️ by [javimcasas](https://github.com/javimcasas)**
+
+**⭐ Star if useful!**
