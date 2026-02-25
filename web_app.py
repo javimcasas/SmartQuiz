@@ -107,17 +107,70 @@ async def call_ai_api(prompt: str) -> str:
             return data["choices"][0]["message"]["content"]
 
 
-def list_exam_files() -> List[Path]:
-    return sorted(EXAMS_DIR.glob("*.json"))
+def list_exams() -> List[Dict[str, Any]]:
+    """Lista exámenes ordenados por fecha de creación/modificación (más recientes primero)"""
+    exams = []
+    for exam_path in EXAMS_DIR.glob("*.json"):
+        try:
+            stat = exam_path.stat()
+            created_time = datetime.fromtimestamp(stat.st_ctime)  # Fecha creación
+            modified_time = datetime.fromtimestamp(stat.st_mtime)  # Fecha modificación
+            
+            # Usar creación primero, fallback a modificación
+            exam_time = created_time if created_time > modified_time else modified_time
+            
+            exam = load_exam(exam_path)
+            
+            # Formatear time_limit para template
+            time_limit_seconds = getattr(exam, 'time_limit_seconds', None)
+            time_limit_display = None
+            if time_limit_seconds:
+                hours = time_limit_seconds // 3600
+                minutes = (time_limit_seconds % 3600) // 60
+                seconds = time_limit_seconds % 60
+                display_parts = []
+                if hours > 0:
+                    display_parts.append(f"{hours}h")
+                display_parts.append(f"{minutes}m")
+                if seconds > 0:
+                    display_parts.append(f"{seconds}s")
+                time_limit_display = "⏱️ " + " ".join(display_parts)
+            
+            exams.append({
+                "id": exam_path.stem,
+                "path": exam_path,
+                "title": exam.title,
+                "description": exam.description,
+                "difficulty": exam.difficulty,
+                "time_limit_display": time_limit_display,
+                "passing_score": getattr(exam, 'passing_score', 0.0),
+                "created_time": exam_time,  # Para ordenar
+                "created_str": exam_time.strftime("%Y-%m-%d %H:%M"),  # Para template opcional
+            })
+        except Exception:
+            # Ignorar archivos corruptos
+            continue
+    
+    # ✅ ORDENAR POR FECHA REAL DE CREACIÓN (más recientes primero)
+    exams.sort(key=lambda x: x["created_time"], reverse=True)
+    return exams
 
 
 def list_completed_exams() -> List[Dict[str, Any]]:
     """Lista todos los exámenes completados ordenados por fecha (más recientes primero)"""
     results = []
-    for result_file in sorted(COMPLETED_DIR.glob("*.json"), reverse=True):
+    for result_file in COMPLETED_DIR.glob("*.json"):  # Quitar sorted aquí
         try:
             with result_file.open(encoding="utf-8") as f:
                 data = json.load(f)
+            
+            # Parsear fecha para ordenar correctamente
+            completed_at = data.get("completed_at")
+            if not completed_at:
+                continue
+                
+            # Convertir ISO string a datetime para ordenar
+            dt = datetime.fromisoformat(completed_at.replace('Z', '+00:00'))
             
             # Cargar el examen original para metadata
             exam_file = EXAMS_DIR / f"{data['exam_id']}.json"
@@ -129,25 +182,29 @@ def list_completed_exams() -> List[Dict[str, Any]]:
                     "title": exam.title,
                     "description": exam.description,
                     "difficulty": exam.difficulty,
-                    "completed_at": data["completed_at"],
+                    "completed_at": data["completed_at"],  # String original para template
+                    "completed_at_dt": dt,  # Objeto datetime para ordenar
                     "percentage": data["percentage"],
                     "total_points": data["total_points"],
                     "max_points": data["max_points"],
                     "result_file": result_file.name,
                     "passing_score": getattr(exam, 'passing_score', 0.0)
                 })
-        except (json.JSONDecodeError, KeyError, ValueError):
-            # Ignorar archivos corruptos
+        except (json.JSONDecodeError, KeyError, ValueError, ValueError):
+            # Ignorar archivos corruptos o fechas inválidas
             continue
     
+    # ✅ ORDENAR POR FECHA REAL (más recientes primero)
+    results.sort(key=lambda x: x["completed_at_dt"], reverse=True)
     return results
 
 
 def load_exam_by_id(exam_id: str) -> Exam:
-    for p in list_exam_files():
-        if p.stem == exam_id:
-            return load_exam(p)
-    raise ValueError(f"Exam '{exam_id}' not found")
+    """Carga examen por ID usando glob directo"""
+    exam_path = EXAMS_DIR / f"{exam_id}.json"
+    if not exam_path.exists():
+        raise ValueError(f"Exam '{exam_id}' not found")
+    return load_exam(exam_path)
 
 
 def save_completed_exam(exam: Exam, result: GradeResult) -> str:
@@ -275,31 +332,7 @@ def import_exam(file: UploadFile) -> str:
 
 @app.get("/")
 def index(request: Request):
-    exams = []
-    for p in list_exam_files():
-        exam = load_exam(p)
-        time_limit_seconds = getattr(exam, 'time_limit_seconds', None)
-        if time_limit_seconds:
-            hours = time_limit_seconds // 3600
-            minutes = (time_limit_seconds % 3600) // 60
-            seconds = time_limit_seconds % 60
-            display_parts = []
-            if hours > 0:
-                display_parts.append(f"{hours}h")
-            display_parts.append(f"{minutes}m")
-            if seconds > 0:
-                display_parts.append(f"{seconds}s")
-            time_limit_display = "⏱️ " + " ".join(display_parts)
-        else:
-            time_limit_display = None
-        exams.append({
-            "id": p.stem,
-            "title": exam.title,
-            "description": exam.description,
-            "difficulty": exam.difficulty,
-            "time_limit_display": time_limit_display,
-            "passing_score": getattr(exam, 'passing_score', 0.0)
-        })
+    exams = list_exams()  # ✅ Nueva función
     context = {"exams": exams}
     return get_theme_response(request, "index.html", context)
 

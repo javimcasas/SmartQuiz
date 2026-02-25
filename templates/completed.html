@@ -16,37 +16,63 @@
 {% if completed_exams %}
 <div class="grid gap-4 md:grid-cols-2">
   {% for c in completed_exams %}
-  <a href="/completed/{{ c.id }}" class="block rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4">
-    <div class="flex items-start justify-between gap-2">
-      <div class="flex-1">
-        <h2 class="text-lg font-medium text-foreground">{{ c.title }}</h2>
+    <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer">
+      <!-- 🎯 Overlay click COMPLETO -->
+      <a href="/completed/{{ c.id }}" class="absolute inset-0 z-20 rounded-xl block"></a>
+
+      <div class="relative z-10 flex flex-col h-full">
+        <!-- 📝 Título principal -->
+        <h2 class="text-lg font-medium text-foreground mb-3 line-clamp-2 leading-tight" title="{{ c.title }}">
+          {{ c.title }}
+        </h2>
+
+        <!-- 📄 Descripción -->
         {% if c.description %}
-        <p class="mt-1 text-sm text-muted-foreground line-clamp-2">
-          {{ c.description }}
-        </p>
+          <p class="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed flex-1 min-h-0">
+            {{ c.description }}
+          </p>
         {% endif %}
-        <div class="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-          <span>{{ "%.1f"|format(c.percentage) }}% 
-            <span class="ml-1 px-2 py-0.5 rounded-full text-xs font-semibold font-mono
-              {% if c.total_points >= c.passing_score %}bg-emerald-500/20 text-emerald-500 border border-emerald-500/30
-              {% else %}bg-rose-500/20 text-rose-500 border border-rose-500/30{% endif %}">
-              {{ "✅ PASS" if c.total_points >= c.passing_score else "❌ FAIL" }}
+
+        <!-- 🔽 Footer con tags -->
+        <div class="flex items-center justify-between gap-2 pt-3 border-t border-border/50 mt-auto">
+          <!-- Tags izquierda -->
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- Porcentaje + PASS/FAIL -->
+            <span class="inline-flex items-center gap-1 text-sm font-medium">
+              <span>{{ "%.1f"|format(c.percentage) }}%</span>
+              <span class="px-2 py-0.5 rounded-full text-xs font-semibold font-mono
+                         {% if c.total_points >= c.passing_score %}bg-emerald-500/20 text-emerald-500 border border-emerald-500/30
+                         {% else %}bg-rose-500/20 text-rose-500 border border-rose-500/30{% endif %}">
+                {{ "✅ PASS" if c.total_points >= c.passing_score else "❌ FAIL" }}
+              </span>
             </span>
+
+            <!-- Puntos + Difficulty -->
+            {% if c.difficulty %}
+              <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                          {% if c.difficulty == 'easy' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                          {% elif c.difficulty == 'hard' %}bg-rose-500/10 text-rose-400 border border-rose-500/30
+                          {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/30{% endif %}">
+                {{ c.difficulty|capitalize }}
+              </span>
+            {% endif %}
+
+            <!-- Fecha -->
+            <span class="font-mono text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+              {{ c.completed_at.split('T')[0] }}
+            </span>
+          </div>
+
+          <!-- Puntos info - Derecha -->
+          <span class="text-xs text-muted-foreground font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30 px-2.5 py-1 rounded-full">
+            {{ c.total_points }}/{{ c.max_points }}
+            {% if c.passing_score %}
+              · {{ c.passing_score }} min
+            {% endif %}
           </span>
-          <span>({{ c.total_points }}/{{ c.max_points }}) · {{ c.passing_score }} min</span>
-          {% if c.difficulty %}
-          <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                      {% if c.difficulty == 'easy' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
-                      {% elif c.difficulty == 'hard' %}bg-rose-500/10 text-rose-400 border border-rose-500/30
-                      {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/30{% endif %}">
-            {{ c.difficulty|capitalize }}
-          </span>
-          {% endif %}
-          <span class="font-mono text-xs">{{ c.completed_at.split('T')[0] }}</span>
         </div>
       </div>
     </div>
-  </a>
   {% endfor %}
 </div>
 {% else %}
