@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 {% block title %}{{ exam.title }} · SmartQuiz{% endblock %}
 {% block content %}
@@ -44,7 +45,7 @@
     {% endif %}
   </div>
 
-  <!-- 🔥 FIX: LAYOUT DINÁMICO según modo -->
+  <!-- 🔥 LAYOUT DINÁMICO según modo -->
   <div id="mainLayout" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
     <!-- 👈 ÍNDICE LATERAL (solo single mode) -->
     <div id="questionIndex" class="lg:col-span-1 hidden max-h-[60vh] overflow-y-auto">
@@ -61,8 +62,8 @@
 
     <!-- Contenido principal -->
     <div id="mainContent" class="lg:col-span-3">
-      <form method="post" class="space-y-6" id="examForm" data-format="{{ exam.format|default('multiple') }}" data-block-previous="{{ exam.block_previous|default('false') }}">
-        <!-- 🔥 FIX: class condicional para multiple/single -->
+      <form method="post" class="space-y-6" id="examForm" data-format="{{ exam.format|default('multiple') }}" data-block-previous="{{ 'true' if exam.block_previous else 'false' }}">
+        <!-- 🔥 class condicional para multiple/single -->
         {% for q in exam.questions %}
           {% set idx = loop.index0 %}
           {% set is_single_mode = exam.format == 'single' %}
@@ -190,15 +191,15 @@
 
   {% if exam.time_limit_seconds %}
   <script>
-    // Timer logic (funciona en todos los modos)
+    // Timer logic
     (function() {
       const timerEl = document.getElementById('timer');
       if (!timerEl) return;
-      
+
       const form = document.getElementById('examForm');
       const maxTime = parseInt(timerEl.dataset.maxTime);
       let timeLeft = maxTime;
-      
+
       function updateDisplay() {
         const hours = Math.floor(timeLeft / 3600);
         const mins = Math.floor((timeLeft % 3600) / 60);
@@ -228,246 +229,224 @@
   </script>
   {% endif %}
 
-  <!-- 🎯 LÓGICA SINGLE MODE (NO afecta multiple) -->
+  <!-- 🎯 SINGLE MODE (FIX: LIMPIAR sessionStorage) -->
   <script>
-    (function() {
-      const form = document.getElementById('examForm');
-      const format = form.dataset.format || 'multiple';
-      
-      // 🔥 FIX 1: Solo ejecutar si es single mode
-      if (format !== 'single') {
-        return; // Multiple mode: preguntas ya visibles, nada más que hacer
-      }
+  (function() {
+    const form = document.getElementById('examForm');
+    const format = form.dataset.format || 'multiple';
 
-      // 🔥 FIX LAYOUT: Activar grid completo para single mode
+    if (format !== 'single') return;
+
+    // 🔥 FIX 1: LIMPIAR sessionStorage al cargar (reset progreso)
+    const savedKey = `exam_${window.location.pathname}`;
+    sessionStorage.removeItem(savedKey);
+    let currentIndex = 0; // ✅ SIEMPRE empezar en 0
+
+    // Layout
+    const mainLayout = document.getElementById('mainLayout');
+    const questionIndex = document.getElementById('questionIndex');
+    mainLayout.classList.add('lg:grid-cols-4');
+    questionIndex.classList.remove('hidden');
+
+    const blockPrevious = form.dataset.blockPrevious === 'true';
+    const blocks = Array.from(document.querySelectorAll('.question-block'));
+    const singleNav = document.getElementById('singleNav');
+    const multipleSubmitWrapper = document.getElementById('multipleSubmitWrapper');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const submitBtn = document.getElementById('submitBtn');
+    const counterEl = document.getElementById('questionCounter');
+    const questionList = document.getElementById('questionList');
+
+    const questionStates = new Array(blocks.length).fill(false);
+
+    singleNav.classList.remove('hidden');
+    multipleSubmitWrapper.style.display = 'none';
+
+    function updateQuestionState(idx) {
+      const block = blocks[idx];
+      const inputs = block.querySelectorAll('input[type="radio"], input[type="checkbox"], input[type="text"]');
+      const hasAnswer = Array.from(inputs).some(input =>
+        input.type === 'radio' ? input.checked :
+        input.type === 'checkbox' ? input.checked :
+        input.value.trim()
+      );
+      questionStates[idx] = hasAnswer;
+      const statusEl = block.querySelector(`#q${idx}-status`);
+      if (statusEl) {
+        statusEl.innerHTML = hasAnswer ?
+          '<span class="text-emerald-500 flex items-center gap-1">✅ Answered</span>' :
+          '<span class="text-muted-foreground flex items-center gap-1">⚪ Not answered</span>';
+      }
+    }
+
+    function createQuestionIndex() {
+      blocks.forEach((block, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `
+          w-full flex items-center gap-2 p-2.5 rounded-lg text-left text-sm font-medium transition-all duration-200 
+          hover:bg-accent focus:outline-none focus:ring-2 focus:ring-sky-500/50
+          ${blockPrevious && idx < currentIndex ? 'opacity-50 cursor-not-allowed bg-muted pointer-events-none' : ''}
+        `;
+        btn.dataset.index = idx;
+        btn.innerHTML = `
+          <span class="w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-muted/50">${idx + 1}</span>
+          <span>Q${idx + 1}</span>
+        `;
+
+        if (!blockPrevious || idx >= currentIndex) {
+          btn.addEventListener('click', () => goToQuestion(idx));
+        }
+
+        questionList.appendChild(btn);
+      });
+      updateIndexVisual();
+    }
+
+    function updateIndexVisual() {
+      Array.from(questionList.children).forEach((btn, idx) => {
+        const numEl = btn.querySelector('span:first-child');
+        const isCurrent = idx === currentIndex;
+        const isAnswered = questionStates[idx];
+
+        if (isCurrent) {
+          btn.classList.add('bg-sky-500/10', 'border', 'border-sky-500/50', 'ring-2', 'ring-sky-500/30');
+          numEl.className = 'w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-sky-500 text-white shadow-md';
+          numEl.textContent = '●';
+        } else if (isAnswered && idx <= currentIndex) {
+          btn.classList.add('bg-emerald-500/10', 'border', 'border-emerald-500/30');
+          numEl.className = 'w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-emerald-500 text-white shadow-sm';
+          numEl.textContent = '✓';
+        } else {
+          btn.classList.remove('bg-sky-500/10', 'border', 'bg-emerald-500/10', 'ring-2');
+          numEl.className = 'w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-muted/50';
+          numEl.textContent = idx + 1;
+        }
+
+        if (blockPrevious && idx < currentIndex) {
+          btn.classList.add('opacity-50', 'cursor-not-allowed', 'pointer-events-none');
+        }
+      });
+    }
+
+    function goToQuestion(idx) {
+      if (blockPrevious && idx < currentIndex) return;
+      currentIndex = idx;
+      updateVisibility();
+    }
+
+    function updateVisibility() {
+      blocks.forEach((el, idx) => {
+        el.style.display = idx === currentIndex ? 'block' : 'none';
+      });
+
+      prevBtn.disabled = blockPrevious || currentIndex === 0;
+      nextBtn.disabled = currentIndex === blocks.length - 1;
+      submitBtn.style.display = currentIndex === blocks.length - 1 ? 'inline-flex' : 'none';
+
+      counterEl.textContent = `Q${currentIndex + 1} / ${blocks.length}`;
+      counterEl.className = 'text-sm font-mono bg-sky-500/10 text-sky-500 px-4 py-2 rounded-xl font-bold min-w-[120px] text-center shadow-md';
+
+      updateIndexVisual();
+      updateQuestionState(currentIndex);
+      blocks[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Listeners inputs
+    blocks.forEach((block, idx) => {
+      const inputs = block.querySelectorAll('input');
+      inputs.forEach(input => {
+        input.addEventListener('change', () => updateQuestionState(idx));
+        if (input.type === 'text') {
+          input.addEventListener('input', () => updateQuestionState(idx));
+        }
+      });
+    });
+
+    // Navegación
+    prevBtn.addEventListener('click', () => {
+      if (!prevBtn.disabled && currentIndex > 0) {
+        currentIndex--;
+        updateVisibility();
+      }
+    });
+
+    nextBtn.addEventListener('click', () => {
+      if (!nextBtn.disabled && currentIndex < blocks.length - 1) {
+        currentIndex++;
+        updateVisibility();
+      }
+    });
+
+    // Submit confirm
+    form.addEventListener('submit', (e) => {
+      const unanswered = questionStates.filter(s => !s).length;
+      let msg = `¿Submit the exam? `;
+      if (unanswered > 0) msg += `${unanswered} question${unanswered > 1 ? 's' : ''} unanswered. `;
+      msg += 'You cannot modify answers afterwards.';
+      if (!confirm(msg)) e.preventDefault();
+    });
+
+    // 🔥 INIT (SIN sessionStorage)
+    createQuestionIndex();
+    blocks.forEach((_, idx) => updateQuestionState(idx));
+    updateVisibility();
+
+    // Guardar solo DENTRO de la sesión (NO al recargar)
+    window.addEventListener('beforeunload', () => {
+      sessionStorage.setItem(savedKey, JSON.stringify({ currentIndex, states: questionStates }));
+    });
+  })();
+  </script>
+
+  <!-- Multiple mode layout + confirm -->
+  <script>
+  (function() {
+    const form = document.getElementById('examForm');
+    const format = form.dataset.format || 'multiple';
+
+    if (format === 'multiple') {
       const mainLayout = document.getElementById('mainLayout');
       const mainContent = document.getElementById('mainContent');
       const questionIndex = document.getElementById('questionIndex');
-      
-      mainLayout.classList.add('lg:grid-cols-4');
-      mainContent.classList.add('lg:col-span-3');
-      questionIndex.classList.remove('hidden');
 
-      const blockPrevious = form.dataset.blockPrevious === 'true';
-      const blocks = Array.from(document.querySelectorAll('.question-block'));
-      const singleNav = document.getElementById('singleNav');
-      const multipleSubmitWrapper = document.getElementById('multipleSubmitWrapper');
-      const prevBtn = document.getElementById('prevBtn');
-      const nextBtn = document.getElementById('nextBtn');
-      const submitBtn = document.getElementById('submitBtn');
-      const counterEl = document.getElementById('questionCounter');
-      const questionList = document.getElementById('questionList');
-      
-      let currentIndex = 0;
-      const questionStates = new Array(blocks.length).fill(false);
+      mainLayout.className = 'grid grid-cols-1 gap-6';
+      mainContent.className = '';
+      questionIndex.style.display = 'none';
 
-      // Mostrar single mode UI
-      singleNav.classList.remove('hidden');
-      multipleSubmitWrapper.style.display = 'none';
+      const questionBlocks = document.querySelectorAll('.question-block');
+      questionBlocks.forEach(block => {
+        block.classList.add('max-w-4xl', 'mx-auto');
+      });
+    }
 
-      // 🔥 FIX 2: Función para actualizar estado de pregunta (llamar inmediatamente)
-      function updateQuestionState(idx) {
-        const block = blocks[idx];
-        const inputs = block.querySelectorAll('input[type="radio"], input[type="checkbox"], input[type="text"]');
-        const hasAnswer = Array.from(inputs).some(input =>
-          input.type === 'radio' ? input.checked :
-          input.type === 'checkbox' ? input.checked :
-          input.value.trim()
+    if (format !== 'multiple') return;
+
+    form.addEventListener('submit', (e) => {
+      const blocks = document.querySelectorAll('.question-block');
+      let answeredCount = 0;
+      let totalQuestions = blocks.length;
+
+      blocks.forEach(block => {
+        const inputs = block.querySelectorAll('input[type="checkbox"]:checked, input[type="radio"]:checked, input[type="text"]');
+        const hasAnswer = Array.from(inputs).some(input => 
+          input.type === 'text' ? input.value.trim() : input.checked
         );
-        questionStates[idx] = hasAnswer;
-        const statusEl = block.querySelector(`#q${idx}-status`);
-        if (statusEl) {
-          statusEl.innerHTML = hasAnswer ?
-            '<span class="text-emerald-500">✅ Answered</span>' :
-            '<span class="text-muted-foreground">⚪ Not answered</span>';
-        }
-      }
-
-      // Crear índice lateral
-      function createQuestionIndex() {
-        blocks.forEach((block, idx) => {
-          const btn = document.createElement('button');
-          btn.className = 'w-full flex items-center gap-2 p-2.5 rounded-lg text-left text-sm font-medium transition-all duration-200 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-sky-500/50';
-          btn.dataset.index = idx;
-          btn.innerHTML = `
-            <span class="w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-muted/50">${idx + 1}</span>
-            <span>Q${idx + 1}</span>
-          `;
-          btn.addEventListener('click', () => goToQuestion(idx));
-          questionList.appendChild(btn);
-        });
-        updateIndexVisual();
-      }
-
-      function updateIndexVisual() {
-        Array.from(questionList.children).forEach((btn, idx) => {
-          const numEl = btn.querySelector('span:first-child');
-          const isCurrent = idx === currentIndex;
-          const isAnswered = questionStates[idx];
-          
-          if (isCurrent) {
-            btn.classList.add('bg-sky-500/10', 'border', 'border-sky-500/50', 'ring-2', 'ring-sky-500/30');
-            numEl.className = 'w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-sky-500 text-white shadow-md';
-            numEl.textContent = '●';
-          } else if (isAnswered) {
-            btn.classList.add('bg-emerald-500/10', 'border', 'border-emerald-500/30');
-            numEl.className = 'w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-emerald-500 text-white shadow-sm';
-            numEl.textContent = '✓';
-          } else {
-            btn.classList.remove('bg-sky-500/10', 'border', 'bg-emerald-500/10', 'ring-2');
-            numEl.className = 'w-6 h-6 flex items-center justify-center rounded font-mono text-xs font-bold bg-muted/50';
-            numEl.textContent = idx + 1;
-          }
-        });
-      }
-
-      function goToQuestion(idx) {
-        currentIndex = idx;
-        updateVisibility();
-      }
-
-      function updateVisibility() {
-        blocks.forEach((el, idx) => {
-          el.style.display = idx === currentIndex ? 'block' : 'none';
-        });
-        
-        // 🔥 FIX 2: Configurar botones correctamente desde el inicio
-        prevBtn.disabled = blockPrevious || currentIndex === 0;
-        nextBtn.disabled = currentIndex === blocks.length - 1;
-        submitBtn.style.display = currentIndex === blocks.length - 1 ? 'inline-flex' : 'none';
-        
-        if (counterEl) {
-          counterEl.textContent = `Q${currentIndex + 1} / ${blocks.length}`;
-          counterEl.className = 'text-sm font-mono bg-sky-500/10 text-sky-500 px-4 py-2 rounded-xl font-bold min-w-[120px] text-center shadow-md';
-        }
-        
-        updateIndexVisual();
-        updateQuestionState(currentIndex);
-        blocks[currentIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-
-      // 🔥 FIX 2: Listeners para cambios de respuesta (incluye text input)
-      blocks.forEach((block, idx) => {
-        const inputs = block.querySelectorAll('input');
-        inputs.forEach(input => {
-          input.addEventListener('change', () => updateQuestionState(idx));
-          if (input.type === 'text') {
-            input.addEventListener('input', () => updateQuestionState(idx));
-          }
-        });
+        if (hasAnswer) answeredCount++;
       });
 
-      // Navegación
-      prevBtn.addEventListener('click', () => {
-        if (!blockPrevious && currentIndex > 0) {
-          currentIndex--;
-          updateVisibility();
-        }
-      });
-
-      nextBtn.addEventListener('click', () => {
-        if (currentIndex < blocks.length - 1) {
-          currentIndex++;
-          updateVisibility();
-        }
-      });
-
-      // 🔥 FIX 3: Confirmación para SINGLE mode
-      form.addEventListener('submit', (e) => {
-        const unanswered = questionStates.filter(s => !s).length;
-        let msg = `¿Submit the exam? `;
-        if (unanswered > 0) {
-          msg += `${unanswered} question${unanswered > 1 ? 's' : ''} unanswered. `;
-        }
-        msg += 'You cannot modify answers afterwards.';
-        
-        if (!confirm(msg)) {
-          e.preventDefault();
-          return false;
-        }
-      });
-
-      // Inicializar single mode
-      createQuestionIndex();
-      
-      // 🔥 FIX 2: Actualizar estado inicial de TODAS las preguntas
-      blocks.forEach((_, idx) => updateQuestionState(idx));
-      
-      updateVisibility();
-
-      // Guardar/restaurar progreso
-      const savedKey = `exam_${window.location.pathname}`;
-      const saved = sessionStorage.getItem(savedKey);
-      if (saved) {
-        try {
-          const progress = JSON.parse(saved);
-          currentIndex = progress.currentIndex || 0;
-          questionStates.forEach((_, idx) => updateQuestionState(idx));
-        } catch(e) {}
+      const unanswered = totalQuestions - answeredCount;
+      let msg = `¿Submit the exam? `;
+      if (unanswered > 0) {
+        msg += `${unanswered} question${unanswered > 1 ? 's' : ''} unanswered. `;
       }
-      
-      window.addEventListener('beforeunload', () => {
-        sessionStorage.setItem(savedKey, JSON.stringify({
-          currentIndex,
-          states: questionStates
-        }));
-      });
-    })();
-  </script>
+      msg += 'You cannot modify answers afterwards.';
 
-  <!-- 🔥 FIX 3: Confirmación para MULTIPLE mode -->
-  <script>
-    // 🔥 FIX LAYOUT: Multiple mode - contenido ocupa TODO el ancho
-    (function() {
-      const form = document.getElementById('examForm');
-      const format = form.dataset.format || 'multiple';
-      
-      if (format === 'multiple') {
-        // Multiple mode: contenido ocupa toda la pantalla
-        const mainLayout = document.getElementById('mainLayout');
-        const mainContent = document.getElementById('mainContent');
-        const questionIndex = document.getElementById('questionIndex');
-        
-        mainLayout.className = 'grid grid-cols-1 gap-6'; // Sin columnas laterales
-        mainContent.className = ''; // Sin col-span
-        questionIndex.style.display = 'none'; // Ocultar índice
-        
-        // Centrar elementos en multiple mode
-        const questionBlocks = document.querySelectorAll('.question-block');
-        questionBlocks.forEach(block => {
-          block.classList.add('max-w-4xl', 'mx-auto');
-        });
+      if (!confirm(msg)) {
+        e.preventDefault();
+        return false;
       }
-      
-      // Confirmación para multiple mode
-      if (format !== 'multiple') return;
-      
-      form.addEventListener('submit', (e) => {
-        // Contar preguntas respondidas en multiple mode
-        const blocks = document.querySelectorAll('.question-block');
-        let answeredCount = 0;
-        let totalQuestions = blocks.length;
-        
-        blocks.forEach(block => {
-          const inputs = block.querySelectorAll('input[type="checkbox"]:checked, input[type="radio"]:checked, input[type="text"]');
-          const hasAnswer = Array.from(inputs).some(input => 
-            input.type === 'text' ? input.value.trim() : input.checked
-          );
-          if (hasAnswer) answeredCount++;
-        });
-        
-        const unanswered = totalQuestions - answeredCount;
-        let msg = `¿Submit the exam? `;
-        if (unanswered > 0) {
-          msg += `${unanswered} question${unanswered > 1 ? 's' : ''} unanswered. `;
-        }
-        msg += 'You cannot modify answers afterwards.';
-        
-        if (!confirm(msg)) {
-          e.preventDefault();
-          return false;
-        }
-      });
-    })();
+    });
+  })();
   </script>
 {% endblock %}
