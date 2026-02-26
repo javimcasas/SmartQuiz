@@ -5,6 +5,8 @@ import json
 import uuid
 import tempfile
 import aiohttp
+import io
+import pdfplumber
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
@@ -85,9 +87,9 @@ async def call_ai_api(prompt: str) -> str:
     payload = {
         "model": "sonar",
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 4000,
-        "temperature": 0.1,
-        "response_format": {  # ✅ NATIVE JSON!
+        "max_tokens": 8000,
+        "temperature": 0.05,
+        "response_format": {
             "type": "json_schema",
             "json_schema": {
                 "name": "smartquiz_exam",
@@ -328,6 +330,44 @@ def import_exam(file: UploadFile) -> str:
         raise HTTPException(status_code=400, detail="Invalid JSON format")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Invalid exam format: {str(e)}")
+    
+def extract_pdf_text(pdf_bytes: bytes) -> str:
+    """Extrae texto PDF con pdfplumber (100% puro Python)"""
+    try:
+        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+            text = ""
+            for page in pdf.pages[:10]:  # Max 10 páginas aprox
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+            return text.strip()[:50000]  # Max 50k chars
+    except Exception:
+        return ""  # Falla silenciosa
+
+
+async def extract_text_from_files(files: List[UploadFile]) -> str:
+    """Extrae texto LIMPIO para IA - menos ruido"""
+    texts = []
+    for file in files[:3]:
+        if file.size > 15 * 1024 * 1024:
+            continue
+            
+        content = await file.read()
+        filename = file.filename.lower()
+        
+        if filename.endswith('.pdf'):
+            text = extract_pdf_text(content)
+        elif filename.endswith('.txt'):
+            text = content.decode('utf-8', errors='ignore')
+        else:
+            continue
+            
+        # 1500 chars por archivo
+        clean_text = text.strip()[:1500].replace('\n', ' ').replace('\t', ' ')
+        if clean_text:
+            texts.append(f"📄 {file.filename}:\n{clean_text}")
+    
+    return "\n---\n".join(texts)
 
 
 @app.get("/")
@@ -500,23 +540,37 @@ def generate_form(request: Request):
 async def generate_exam(
     request: Request,
     title: str = Form(...),
-    description: str = Form(...),  # ← Prompt principal para IA
+    description: str = Form(...),
     num_questions: int = Form(...),
     difficulty: str = Form(...),
-    types: List[str] = Form(...),  # Multi-select
+    types: List[str] = Form(...),
     time_limit_seconds: Optional[int] = Form(0),
     passing_score: float = Form(...),
     total_points: float = Form(...),
-    format: str = Form("multiple")
+    format: str = Form("multiple"),
+    files: List[UploadFile] = File(default=[])
 ):
+    valid_files = [
+        file for file in files 
+        if file.filename and file.filename.strip() and file.size > 0
+    ]
+    
+    # Extraer textos de archivos para contexto IA
+    file_context = ""
+    if valid_files:
+        file_context = await extract_text_from_files(valid_files)
+        
     # 🎯 1. Prompt para IA (tu API)
+    context_intro = f"DOCUMENT CONTEXT:\\n{file_context}\\n\\n" if file_context else ""
+
     prompt = f"""Generate EXACTLY {num_questions} SmartQuiz questions about "{description}".
+    {context_intro}
 
 CRITICAL RULES:
 1. EXACTLY {num_questions} questions (numbered 1-N)
 2. Types ONLY: {','.join(types)} 
 3. 4 options A/B/C/D (except fill_blank/true_false)
-4. "correct": ["a"] o ["a","b"] array
+4. "correct": ["a"] o ["a","b"] array - EXACT lowercase match to option values
 5. Points: {total_points/num_questions:.1f} cada una
 6. Explanations SOLO en "description" de opción correcta
 7. NO markdown, NO texto extra, NO ```json

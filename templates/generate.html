@@ -20,7 +20,7 @@
     </p>
   </div>
 
-  <form id="generateForm" method="POST" action="/generate-exam" class="space-y-6">
+  <form id="generateForm" method="POST" action="/generate-exam" enctype="multipart/form-data" class="space-y-6">
     <!-- 1. Título -->
     <div>
       <label class="block text-sm font-medium mb-2">Exam Title</label>
@@ -37,7 +37,22 @@
                 placeholder="Create a history exam about Ancient Greece covering key figures like Socrates, Plato, Alexander the Great. Include battles, philosophy, mythology. 20 questions with 4 options A/B/C/D each, realistic difficulty, explanations for correct answers..."></textarea>
     </div>
 
-    <!-- 3-9. Resto campos en grid -->
+    <!-- 🆕 3. Archivos adjuntos (PDF/TXT) -->
+    <div>
+      <label class="block text-sm font-medium mb-2">Attach files (optional)</label>
+      <div class="space-y-2">
+        <div class="p-4 rounded-xl border-2 border-dashed border-border hover:border-purple-500/50 bg-purple-500/5 transition-all">
+          <input type="file" name="files" multiple accept=".pdf,.txt" class="w-full file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 hover:file:text-purple-800 cursor-pointer"
+                 data-max-files="3" data-max-size="15728640">
+          <p class="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+            📎 <span>Up to 3 files</span> • <span>Max 15MB each</span> • <span>PDF or TXT only</span>
+          </p>
+        </div>
+        <div id="fileList" class="space-y-1 text-xs text-muted-foreground hidden"></div>
+      </div>
+    </div>
+
+    <!-- 4-10. Resto campos en grid -->
     <div class="grid md:grid-cols-2 gap-6">
       <!-- Número preguntas -->
       <div>
@@ -48,7 +63,7 @@
           <option value="15">15 questions</option>
           <option value="20" selected>20 questions</option>
           <option value="25">25 questions</option>
-            <option value="30">30 questions (max)</option>
+          <option value="30">30 questions (max)</option>
         </select>
       </div>
 
@@ -191,11 +206,11 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
   // Fases del progreso con mensajes realistas
   const phases = [
     { percent: 10, message: "Analyzing your request ✨", duration: 1000 },
-    { percent: 25, message: "Designing question structure 📝", duration: 1500 },
-    { percent: 40, message: "Generating content with AI 🧠", duration: 2000 },
-    { percent: 60, message: "Creating multiple choice options 🎯", duration: 2500 },
-    { percent: 75, message: "Adding explanations & validation ✅", duration: 2000 },
-    { percent: 90, message: "Finalizing exam format 📄", duration: 1500 },
+    { percent: 25, message: "Processing attached files 📎", duration: 1500 },
+    { percent: 40, message: "Designing question structure 📝", duration: 1500 },
+    { percent: 60, message: "Generating content with AI 🧠", duration: 2500 },
+    { percent: 75, message: "Creating multiple choice options 🎯", duration: 2000 },
+    { percent: 90, message: "Adding explanations & validation ✅", duration: 1500 },
     { percent: 100, message: "Exam ready! Redirecting...", duration: 500 }
   ];
   
@@ -238,6 +253,63 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
   };
   window.addEventListener('beforeunload', cleanup);
 });
+
+// 🆕 JavaScript para manejo de archivos
+document.querySelector('input[type="file"][name="files"]').addEventListener('change', function(e) {
+  const fileList = document.getElementById('fileList');
+  const maxFiles = parseInt(this.dataset.maxFiles) || 3;
+  const maxSize = parseInt(this.dataset.maxSize) || 15728640; // 15MB
+  
+  fileList.innerHTML = '';
+  fileList.classList.add('hidden');
+  
+  let validFiles = 0;
+  
+  Array.from(this.files).forEach((file, index) => {
+    const isValidType = file.name.toLowerCase().match(/\.(pdf|txt)$/);
+    const isValidSize = file.size <= maxSize;
+    
+    const fileItem = document.createElement('div');
+    fileItem.className = 'flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg';
+    
+    if (isValidType && isValidSize) {
+      validFiles++;
+      fileItem.innerHTML = `
+        <div class="flex items-center gap-2 truncate">
+          <span class="text-xs font-medium truncate flex-1">${file.name}</span>
+          <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">${(file.size/1024/1024).toFixed(1)}MB</span>
+        </div>
+        <span class="text-xs text-green-600 font-medium">✓ Valid</span>
+      `;
+    } else {
+      let errorMsg = [];
+      if (!isValidType) errorMsg.push('PDF/TXT only');
+      if (!isValidSize) errorMsg.push('Max 10MB');
+      
+      fileItem.innerHTML = `
+        <div class="flex items-center gap-2 truncate">
+          <span class="text-xs font-medium line-through truncate flex-1">${file.name}</span>
+          <span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">${(file.size/1024/1024).toFixed(1)}MB</span>
+        </div>
+        <span class="text-xs text-red-600 font-medium">⚠ ${errorMsg.join(', ')}</span>
+      `;
+    }
+    
+    fileList.appendChild(fileItem);
+  });
+  
+  if (this.files.length > 0) {
+    fileList.classList.remove('hidden');
+    
+    // Mostrar contador si excede máximo
+    if (this.files.length > maxFiles) {
+      const warning = document.createElement('div');
+      warning.className = 'mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded-lg text-xs text-yellow-800';
+      warning.textContent = `⚠ Only first ${maxFiles} files will be processed`;
+      fileList.appendChild(warning);
+    }
+  }
+});
 </script>
 
 <style>
@@ -264,6 +336,33 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
 
 #progressBar.animate-pulse {
   animation: progressGlow 1.5s infinite;
+}
+
+/* Estilos personalizados para input file */
+input[type="file"]::-webkit-file-upload-button {
+  visibility: hidden;
+}
+
+input[type="file"]::before {
+  content: "Choose files";
+  display: inline-block;
+  background: linear-gradient(135deg, #9333ea, #ec4899);
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-weight: 600;
+  color: white;
+  text-transform: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  text-align: center;
+  border: 0;
+}
+
+input[type="file"]:hover::before {
+  background: linear-gradient(135deg, #7c3aed, #db2777);
+  transform: translateY(-1px);
 }
 </style>
 {% endblock %}
