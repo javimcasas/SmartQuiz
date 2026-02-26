@@ -182,28 +182,44 @@
 </div>
 
 <script>
+let isSubmitting = false;  // Flag para prevenir beforeunload durante submit
+
 document.getElementById('generateForm').addEventListener('submit', function(e) {
+  // 🔥 PREVENIR MÚLTIPLES SUBMITS
   const btn = document.querySelector('.generate-btn');
+  const form = document.getElementById('generateForm');
+  
+  if (btn.disabled || btn.classList.contains('submitting')) {
+    e.preventDefault();
+    return false;
+  }
+
+  // 🔥 MARCAR COMO SUBMITTING INMEDIATAMENTE (evita beforeunload)
+  isSubmitting = true;
+
+  // 🔥 BLOQUEAR BOTÓN
+  btn.disabled = true;
+  btn.classList.add('submitting');
+  btn.querySelector('.btn-text').textContent = '⏳ Processing...';
+  
   const progressContainer = document.getElementById('progressContainer');
   const progressBar = document.getElementById('progressBar');
   const progressText = document.getElementById('progressText');
   const progressLabel = document.getElementById('progressLabel');
   const progressMessage = document.getElementById('progressMessage');
   
-  // Activar loading en botón
+  // Activar loading visual
   btn.classList.add('group-loading');
-  
-  // Mostrar progress bar inmediatamente con scroll suave
   progressContainer.classList.remove('hidden');
   
-  // Scroll suave hacia la barra de progreso (offset para que no quede pegada arriba)
+  // Scroll suave
   progressContainer.scrollIntoView({ 
     behavior: 'smooth', 
     block: 'center',
     inline: 'nearest'
   });
   
-  // Fases del progreso con mensajes realistas
+  // Fases del progreso (sin cambios)
   const phases = [
     { percent: 10, message: "Analyzing your request ✨", duration: 1000 },
     { percent: 25, message: "Processing attached files 📎", duration: 1500 },
@@ -223,13 +239,11 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
     progressLabel.classList.toggle('hidden', targetPercent < 20);
     progressMessage.textContent = message;
     
-    // Efecto shimmer cuando llega al 100%
     if (isFinal) {
       progressBar.classList.add('animate-pulse');
     }
   }
   
-  // Iniciar animación de progreso por fases
   function nextPhase() {
     if (currentPhase < phases.length) {
       const phase = phases[currentPhase];
@@ -241,76 +255,33 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
     }
   }
   
-  // Comenzar con 0% visible
+  // Iniciar progress
   updateProgress(0, phases[0].message);
-  
-  // Iniciar secuencia de fases
   setTimeout(nextPhase, 500);
   
-  // Cleanup en caso de cancelación
-  const cleanup = () => {
-    window.removeEventListener('beforeunload', cleanup);
+  // 🔥 beforeunload CONDICIONAL (solo si NO está submitting)
+  const preventUnload = (e) => {
+    if (isSubmitting) return;  // ← CLAVE: Ignora durante submit
+    
+    e.preventDefault();
+    e.returnValue = 'AI is generating your exam. This may take 30-90 seconds. Cancel?';
+    return e.returnValue;
   };
-  window.addEventListener('beforeunload', cleanup);
-});
-
-// 🆕 JavaScript para manejo de archivos
-document.querySelector('input[type="file"][name="files"]').addEventListener('change', function(e) {
-  const fileList = document.getElementById('fileList');
-  const maxFiles = parseInt(this.dataset.maxFiles) || 3;
-  const maxSize = parseInt(this.dataset.maxSize) || 15728640; // 15MB
   
-  fileList.innerHTML = '';
-  fileList.classList.add('hidden');
+  window.addEventListener('beforeunload', preventUnload);
   
-  let validFiles = 0;
-  
-  Array.from(this.files).forEach((file, index) => {
-    const isValidType = file.name.toLowerCase().match(/\.(pdf|txt)$/);
-    const isValidSize = file.size <= maxSize;
-    
-    const fileItem = document.createElement('div');
-    fileItem.className = 'flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg';
-    
-    if (isValidType && isValidSize) {
-      validFiles++;
-      fileItem.innerHTML = `
-        <div class="flex items-center gap-2 truncate">
-          <span class="text-xs font-medium truncate flex-1">${file.name}</span>
-          <span class="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">${(file.size/1024/1024).toFixed(1)}MB</span>
-        </div>
-        <span class="text-xs text-green-600 font-medium">✓ Valid</span>
-      `;
-    } else {
-      let errorMsg = [];
-      if (!isValidType) errorMsg.push('PDF/TXT only');
-      if (!isValidSize) errorMsg.push('Max 10MB');
-      
-      fileItem.innerHTML = `
-        <div class="flex items-center gap-2 truncate">
-          <span class="text-xs font-medium line-through truncate flex-1">${file.name}</span>
-          <span class="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">${(file.size/1024/1024).toFixed(1)}MB</span>
-        </div>
-        <span class="text-xs text-red-600 font-medium">⚠ ${errorMsg.join(', ')}</span>
-      `;
-    }
-    
-    fileList.appendChild(fileItem);
-  });
-  
-  if (this.files.length > 0) {
-    fileList.classList.remove('hidden');
-    
-    // Mostrar contador si excede máximo
-    if (this.files.length > maxFiles) {
-      const warning = document.createElement('div');
-      warning.className = 'mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded-lg text-xs text-yellow-800';
-      warning.textContent = `⚠ Only first ${maxFiles} files will be processed`;
-      fileList.appendChild(warning);
-    }
-  }
+  // 🔥 TIMEOUT DE SEGURIDAD (5min) - Limpieza completa
+  setTimeout(() => {
+    isSubmitting = false;
+    btn.disabled = false;
+    btn.classList.remove('submitting', 'group-loading');
+    btn.querySelector('.btn-text').textContent = '✨ Generate Exam with AI';
+    window.removeEventListener('beforeunload', preventUnload);
+    progressContainer.classList.add('hidden');
+  }, 300000); // 5 minutos
 });
 </script>
+
 
 <style>
 @keyframes shimmer {
@@ -363,6 +334,16 @@ input[type="file"]::before {
 input[type="file"]:hover::before {
   background: linear-gradient(135deg, #7c3aed, #db2777);
   transform: translateY(-1px);
+}
+
+.generate-btn:disabled,
+.generate-btn.submitting {
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.generate-btn.submitting .btn-text {
+  animation: pulse 1.5s infinite;
 }
 </style>
 {% endblock %}
