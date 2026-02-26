@@ -415,6 +415,19 @@ def get_completed_count() -> Dict[str, int]:
     count = len(list(COMPLETED_DIR.glob("*.json")))
     return {"count": count}
 
+@app.delete("/completed/{completion_id}")
+def delete_completed(completion_id: str):
+    """Borra resultado completado del directorio completed/"""
+    result_path = COMPLETED_DIR / f"{completion_id}.json"
+    if not result_path.exists():
+        raise HTTPException(status_code=404, detail="Completed exam not found")
+
+    try:
+        result_path.unlink()
+        return JSONResponse({"message": "Completed exam deleted successfully"})
+    except OSError as e:
+        raise HTTPException(status_code=500, detail=f"Could not delete file: {e}")
+
 
 @app.get("/exam/{exam_id}")
 def show_exam(request: Request, exam_id: str):

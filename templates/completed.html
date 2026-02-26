@@ -16,60 +16,57 @@
 {% if completed_exams %}
 <div class="grid gap-4 md:grid-cols-2">
   {% for c in completed_exams %}
-    <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer">
-      <!-- 🎯 Overlay click COMPLETO -->
-      <a href="/completed/{{ c.id }}" class="absolute inset-0 z-20 rounded-xl block"></a>
-
-      <div class="relative z-10 flex flex-col h-full">
-        <!-- 📝 Título principal -->
+    <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer" onclick="window.location.href='/completed/{{ c.id }}';">
+      <!-- Contenido (SIN overlay <a>) -->
+      <div class="flex flex-col h-full">
+        <!-- Título -->
         <h2 class="text-lg font-medium text-foreground mb-3 line-clamp-2 leading-tight" title="{{ c.title }}">
           {{ c.title }}
         </h2>
 
-        <!-- 📄 Descripción -->
+        <!-- Descripción -->
         {% if c.description %}
           <p class="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed flex-1 min-h-0">
             {{ c.description }}
           </p>
         {% endif %}
 
-        <!-- 🔽 Footer con tags -->
+        <!-- Footer CON Delete clickable -->
         <div class="flex items-center justify-between gap-2 pt-3 border-t border-border/50 mt-auto">
-          <!-- Tags izquierda -->
+          <!-- Tags -->
           <div class="flex items-center gap-2 flex-wrap">
-            <!-- Porcentaje + PASS/FAIL -->
             <span class="inline-flex items-center gap-1 text-sm font-medium">
               <span>{{ "%.1f"|format(c.percentage) }}%</span>
               <span class="px-2 py-0.5 rounded-full text-xs font-semibold font-mono
-                         {% if c.total_points >= c.passing_score %}bg-emerald-500/20 text-emerald-500 border border-emerald-500/30
-                         {% else %}bg-rose-500/20 text-rose-500 border border-rose-500/30{% endif %}">
+                      {% if c.total_points >= c.passing_score %}bg-emerald-500/20 text-emerald-500 border border-emerald-500/30
+                      {% else %}bg-rose-500/20 text-rose-500 border border-rose-500/30{% endif %}">
                 {{ "✅ PASS" if c.total_points >= c.passing_score else "❌ FAIL" }}
               </span>
             </span>
 
-            <!-- Puntos + Difficulty -->
             {% if c.difficulty %}
               <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
-                          {% if c.difficulty == 'easy' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
-                          {% elif c.difficulty == 'hard' %}bg-rose-500/10 text-rose-400 border border-rose-500/30
-                          {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/30{% endif %}">
+                        {% if c.difficulty == 'easy' %}bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                        {% elif c.difficulty == 'hard' %}bg-rose-500/10 text-rose-400 border border-rose-500/30
+                        {% else %}bg-amber-500/10 text-amber-400 border border-amber-500/30{% endif %}">
                 {{ c.difficulty|capitalize }}
               </span>
             {% endif %}
 
-            <!-- Fecha -->
-            <span class="font-mono text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+            <span class="text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full font-mono">
               {{ c.completed_at.split('T')[0] }}
             </span>
           </div>
-
-          <!-- Puntos info - Derecha -->
-          <span class="text-xs text-muted-foreground font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30 px-2.5 py-1 rounded-full">
-            {{ c.total_points }}/{{ c.max_points }}
-            {% if c.passing_score %}
-              · {{ c.passing_score }} min
-            {% endif %}
-          </span>
+          
+          <!-- Delete BUTTON (AHORA 100% CLICKABLE) -->
+          <button
+            type="button"
+            class="flex-shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-medium border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/40 whitespace-nowrap"
+            onclick="event.stopPropagation(); confirmDeleteCompleted('{{ c.id }}', '{{ c.title | replace('\'', '\\\'') }}');"
+            title="Delete result"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>
@@ -82,4 +79,26 @@
   </p>
 </div>
 {% endif %}
+
+<script>
+// 🗑 Delete COMPLETED exam
+window.confirmDeleteCompleted = function(completionId, examTitle) {
+  const msg = `¿Eliminar resultado de "${examTitle}"? No podrás recuperarlo.`;
+  if (!window.confirm(msg)) return;
+
+  fetch(`/completed/${completionId}`, {
+    method: 'DELETE',
+    headers: { 'Accept': 'application/json' }
+  }).then(async (res) => {
+    if (res.ok) {
+      window.location.href = `/?temp_success=${encodeURIComponent('✅ Resultado eliminado')}&nocache=${Date.now()}`;
+    } else {
+      const data = await res.json().catch(() => ({}));
+      window.location.href = `/?temp_error=${encodeURIComponent('❌ ' + (data.detail || 'Error'))}&nocache=${Date.now()}`;
+    }
+  }).catch(() => {
+    window.location.href = `/?temp_error=${encodeURIComponent('❌ Error de conexión')}&nocache=${Date.now()}`;
+  });
+};
+</script>
 {% endblock %}

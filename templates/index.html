@@ -68,69 +68,67 @@
   </div>
 
   {% if exams %}
-    <div class="grid gap-4 md:grid-cols-2">
-      {% for e in exams %}
-        <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer">
-          <!-- 🎯 Overlay click COMPLETO - z-20 sobre todo -->
-          <a href="/exam/{{ e.id }}" class="absolute inset-0 z-20 rounded-xl block"></a>
+  <div class="grid gap-4 md:grid-cols-2">
+    {% for e in exams %}
+      <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer" onclick="window.location.href='/exam/{{ e.id }}';">
+        <!-- Contenido (SIN overlay <a>) -->
+        <div class="flex flex-col h-full">
+          <!-- 📝 Título principal -->
+          <h2 class="text-lg font-medium text-foreground mb-3 line-clamp-2 leading-tight" title="{{ e.title }}">
+            {{ e.title }}
+          </h2>
 
-          <div class="relative z-10 flex flex-col h-full">
-            <!-- 📝 Título principal -->
-            <h2 class="text-lg font-medium text-foreground mb-3 line-clamp-2 leading-tight" title="{{ e.title }}">
-              {{ e.title }}
-            </h2>
+          <!-- 📄 Descripción -->
+          {% if e.description %}
+            <p class="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed flex-1 min-h-0">
+              {{ e.description }}
+            </p>
+          {% endif %}
 
-            <!-- 📄 Descripción -->
-            {% if e.description %}
-              <p class="text-sm text-muted-foreground line-clamp-3 mb-4 leading-relaxed flex-1 min-h-0">
-                {{ e.description }}
-              </p>
-            {% endif %}
-
-            <!-- 🔽 Footer con tags + botón -->
-            <div class="flex items-center justify-between gap-2 pt-3 border-t border-border/50 mt-auto">
-              <!-- Tags izquierda -->
-              <div class="flex items-center gap-2 flex-wrap">
-                {% if e.difficulty %}
-                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
-                               {% if e.difficulty == 'easy' %}
-                                 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
-                               {% elif e.difficulty == 'hard' %}
-                                 bg-rose-500/10 text-rose-400 border border-rose-500/30
-                               {% else %}
-                                 bg-amber-500/10 text-amber-400 border border-amber-500/30
-                               {% endif %}">
-                    {{ e.difficulty|capitalize }}
-                  </span>
-                {% endif %}
-                {% if e.time_limit_display %}
-                  <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/30 font-mono">
-                    {{ e.time_limit_display }}
-                  </span>
-                {% endif %}
-              </div>
-              
-              <!-- ❌ Botón Delete - Estilo tag rectangular redondeado -->
-              <button
-                type="button"
-                class="flex-shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-medium border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/40 whitespace-nowrap"
-                onclick="event.stopPropagation(); event.preventDefault(); confirmDeleteExam('{{ e.id }}', '{{ e.title | replace('\'', '\\\'') }}');"
-                title="Delete exam"
-              >
-                Delete
-              </button>
+          <!-- 🔽 Footer con tags + botón -->
+          <div class="flex items-center justify-between gap-2 pt-3 border-t border-border/50 mt-auto">
+            <!-- Tags izquierda -->
+            <div class="flex items-center gap-2 flex-wrap">
+              {% if e.difficulty %}
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                        {% if e.difficulty == 'easy' %}
+                          bg-emerald-500/10 text-emerald-400 border border-emerald-500/30
+                        {% elif e.difficulty == 'hard' %}
+                          bg-rose-500/10 text-rose-400 border border-rose-500/30
+                        {% else %}
+                          bg-amber-500/10 text-amber-400 border border-amber-500/30
+                        {% endif %}">
+                  {{ e.difficulty|capitalize }}
+                </span>
+              {% endif %}
+              {% if e.time_limit_display %}
+                <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-sky-500/10 text-sky-400 border border-sky-500/30 font-mono">
+                  {{ e.time_limit_display }}
+                </span>
+              {% endif %}
             </div>
+            
+            <!-- ❌ Botón Delete (AHORA 100% CLICKABLE) -->
+            <button
+              type="button"
+              class="flex-shrink-0 inline-flex items-center justify-center px-3 py-1.5 rounded-full text-xs font-medium border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:text-rose-300 hover:shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-rose-500/40 whitespace-nowrap"
+              onclick="event.stopPropagation(); confirmDeleteExam('{{ e.id }}', '{{ e.title | replace('\'', '\\\'') }}');"
+              title="Delete exam"
+            >
+              Delete
+            </button>
           </div>
         </div>
-      {% endfor %}
-    </div>
+      </div>
+    {% endfor %}
+  </div>
   {% else %}
-    <div class="rounded-xl border border-dashed border-border bg-muted/40 p-6">
-      <p class="text-sm text-muted-foreground">
-        No exams found in your <code class="px-1 py-0.5 rounded bg-muted text-xs">exams/</code> folder.
-        Use the import card above to add your first exam!
-      </p>
-    </div>
+  <div class="rounded-xl border border-dashed border-border bg-muted/40 p-6">
+    <p class="text-sm text-muted-foreground">
+      No exams found in your <code class="px-1 py-0.5 rounded bg-muted text-xs">exams/</code> folder.
+      Use the import card above to add your first exam!
+    </p>
+  </div>
   {% endif %}
 
   <!-- 🚀 SCRIPT MEJORADO -->
