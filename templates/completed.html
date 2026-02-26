@@ -13,10 +13,35 @@
   <a href="/" class="text-sm text-muted-foreground hover:text-foreground">&larr; Back to exams</a>
 </div>
 
+<!-- 🔍 BARRA DE BÚSQUEDA (misma estética que index.html) -->
+<div class="mb-8">
+  <div class="relative">
+    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+      <svg class="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+      </svg>
+    </div>
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Search completed exams by title..."
+      class="w-full pl-12 pr-4 py-3 rounded-2xl border border-border bg-muted/50 hover:border-sky-400 hover:bg-muted focus:border-sky-500 focus:ring-1 focus:ring-sky-500 focus:bg-muted/80 transition-all duration-200 text-foreground placeholder:text-muted-foreground font-medium"
+    />
+    <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+      <div id="clearSearch" class="hidden p-1 hover:bg-muted/50 rounded-full transition-colors cursor-pointer">
+        <svg class="h-4 w-4 text-muted-foreground hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+  <p id="searchCount" class="text-xs text-muted-foreground mt-2 font-mono hidden"></p>
+</div>
+
 {% if completed_exams %}
-<div class="grid gap-4 md:grid-cols-2">
+<div id="examsGrid" class="grid gap-4 md:grid-cols-2">
   {% for c in completed_exams %}
-    <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer" onclick="window.location.href='/completed/{{ c.id }}';">
+    <div class="exam-card group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer" onclick="window.location.href='/completed/{{ c.id }}';" data-title="{{ c.title|lower }}">
       <!-- Contenido (SIN overlay <a>) -->
       <div class="flex flex-col h-full">
         <!-- Título -->
@@ -81,24 +106,88 @@
 {% endif %}
 
 <script>
-// 🗑 Delete COMPLETED exam
-window.confirmDeleteCompleted = function(completionId, examTitle) {
-  const msg = `¿Eliminar resultado de "${examTitle}"? No podrás recuperarlo.`;
-  if (!window.confirm(msg)) return;
+(function() {
+  // 🔍 FUNCIONALIDAD DE BÚSQUEDA (igual que index.html)
+  const searchInput = document.getElementById('searchInput');
+  const clearSearch = document.getElementById('clearSearch');
+  const searchCount = document.getElementById('searchCount');
+  const examsGrid = document.getElementById('examsGrid');
+  const examCards = document.querySelectorAll('.exam-card');
 
-  fetch(`/completed/${completionId}`, {
-    method: 'DELETE',
-    headers: { 'Accept': 'application/json' }
-  }).then(async (res) => {
-    if (res.ok) {
-      window.location.href = `/?temp_success=${encodeURIComponent('✅ Resultado eliminado')}&nocache=${Date.now()}`;
+  let visibleCount = examCards.length;
+
+  function filterExams(query) {
+    const normalizedQuery = query.toLowerCase().trim();
+    
+    examCards.forEach(card => {
+      const title = card.dataset.title;
+      if (title.includes(normalizedQuery)) {
+        card.style.display = 'block';
+        card.classList.remove('hidden');
+        card.classList.add('animate-in', 'fade-in', 'duration-200');
+      } else {
+        card.style.display = 'none';
+        card.classList.add('hidden');
+        card.classList.remove('animate-in', 'fade-in');
+      }
+    });
+
+    // Actualizar contador
+    visibleCount = document.querySelectorAll('.exam-card:not([style*="display: none"])').length;
+    updateSearchCount(normalizedQuery);
+    
+    // Mostrar/ocultar contador
+    searchCount.classList.toggle('hidden', normalizedQuery === '');
+  }
+
+  function updateSearchCount(query) {
+    if (query) {
+      searchCount.textContent = `${visibleCount} exam${visibleCount !== 1 ? 's' : ''} found`;
     } else {
-      const data = await res.json().catch(() => ({}));
-      window.location.href = `/?temp_error=${encodeURIComponent('❌ ' + (data.detail || 'Error'))}&nocache=${Date.now()}`;
+      searchCount.textContent = `${examCards.length} exam${examCards.length !== 1 ? 's' : ''}`;
     }
-  }).catch(() => {
-    window.location.href = `/?temp_error=${encodeURIComponent('❌ Error de conexión')}&nocache=${Date.now()}`;
+  }
+
+  // Eventos de búsqueda
+  searchInput.addEventListener('input', (e) => {
+    filterExams(e.target.value);
+    clearSearch.classList.toggle('hidden', e.target.value === '');
   });
-};
+
+  clearSearch.addEventListener('click', () => {
+    searchInput.value = '';
+    filterExams('');
+    searchInput.focus();
+  });
+
+  // Enter para limpiar
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      searchInput.value = '';
+      filterExams('');
+      searchInput.blur();
+    }
+  });
+
+  // 🗑 Delete COMPLETED exam
+  window.confirmDeleteCompleted = function(completionId, examTitle) {
+    const msg = `¿Eliminar resultado de "${examTitle}"? No podrás recuperarlo.`;
+    if (!window.confirm(msg)) return;
+
+    fetch(`/completed/${completionId}`, {
+      method: 'DELETE',
+      headers: { 'Accept': 'application/json' }
+    }).then(async (res) => {
+      if (res.ok) {
+        window.location.href = `/?temp_success=${encodeURIComponent('✅ Resultado eliminado')}&nocache=${Date.now()}`;
+      } else {
+        const data = await res.json().catch(() => ({}));
+        window.location.href = `/?temp_error=${encodeURIComponent('❌ ' + (data.detail || 'Error'))}&nocache=${Date.now()}`;
+      }
+    }).catch(() => {
+      window.location.href = `/?temp_error=${encodeURIComponent('❌ Error de conexión')}&nocache=${Date.now()}`;
+    });
+  };
+})();
 </script>
 {% endblock %}

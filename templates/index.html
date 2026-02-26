@@ -25,16 +25,41 @@
     </div>
   </div>
 
+  <!-- 🔍 BARRA DE BÚSQUEDA -->
+  <div class="mb-8">
+    <div class="relative">
+      <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+        <svg class="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+      <input
+        type="text"
+        id="searchInput"
+        placeholder="Search exams by title..."
+        class="w-full pl-12 pr-4 py-3 rounded-2xl border border-border bg-muted/50 hover:border-sky-400 hover:bg-muted focus:border-sky-500 focus:ring-1 focus:ring-sky-500 focus:bg-muted/80 transition-all duration-200 text-foreground placeholder:text-muted-foreground font-medium"
+      />
+      <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+        <div id="clearSearch" class="hidden p-1 hover:bg-muted/50 rounded-full transition-colors cursor-pointer">
+          <svg class="h-4 w-4 text-muted-foreground hover:text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <p id="searchCount" class="text-xs text-muted-foreground mt-2 font-mono hidden"></p>
+  </div>
+
   <!-- 🚀 TARJETA DE IMPORTACIÓN PREMIUM -->
   <div class="mb-6">
     <form id="uploadForm" class="relative rounded-xl border-2 border-dashed border-border bg-gradient-to-br from-muted/50 to-muted hover:border-sky-400 hover:from-sky-500/10 hover:to-blue-500/10 transition-all duration-300 p-8 text-center group cursor-pointer hover:shadow-xl">
-     
+      
       <!-- Input file oculto -->
       <input type="file" name="file" id="fileInput" accept=".json" class="sr-only" required>
-     
+      
       <!-- Label invisible para click -->
       <label for="fileInput" class="absolute inset-0 w-full h-full cursor-pointer rounded-xl"></label>
-     
+      
       <div class="relative z-10 flex flex-col items-center justify-center space-y-4 pointer-events-none">
         <!-- Icono animado -->
         <div class="w-20 h-20 bg-sky-500/10 group-hover:bg-sky-500/20 border-2 border-sky-500/30 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300 group-hover:scale-110">
@@ -49,16 +74,16 @@
           <p class="text-xs text-muted-foreground/70 font-mono bg-muted/50 px-2 py-0.5 rounded">.json only</p>
         </div>
       </div>
-     
+      
       <!-- Drag feedback -->
       <p id="dragText" class="text-sm font-medium text-sky-500 mt-2 hidden transition-opacity">📁 Drop to upload...</p>
-     
+      
       <!-- Loading spinner -->
       <div id="loadingSpinner" class="hidden mt-4">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
         <p class="text-sm text-sky-500 mt-2">Importing exam...</p>
       </div>
-     
+      
       <!-- ✅ Success / ❌ Error messages -->
       <div id="uploadMessage" class="mt-4 hidden">
         <div id="successMsg" class="hidden p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 text-sm font-medium"></div>
@@ -68,9 +93,9 @@
   </div>
 
   {% if exams %}
-  <div class="grid gap-4 md:grid-cols-2">
+  <div id="examsGrid" class="grid gap-4 md:grid-cols-2">
     {% for e in exams %}
-      <div class="group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer" onclick="window.location.href='/exam/{{ e.id }}';">
+      <div class="exam-card group relative rounded-xl border border-border bg-muted hover:bg-accent transition-all p-4 h-full cursor-pointer" onclick="window.location.href='/exam/{{ e.id }}';" data-title="{{ e.title|lower }}">
         <!-- Contenido (SIN overlay <a>) -->
         <div class="flex flex-col h-full">
           <!-- 📝 Título principal -->
@@ -131,9 +156,71 @@
   </div>
   {% endif %}
 
-  <!-- 🚀 SCRIPT MEJORADO -->
+  <!-- 🚀 SCRIPT MEJORADO CON BÚSQUEDA -->
   <script>
   (function() {
+    // 🔍 FUNCIONALIDAD DE BÚSQUEDA
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    const searchCount = document.getElementById('searchCount');
+    const examsGrid = document.getElementById('examsGrid');
+    const examCards = document.querySelectorAll('.exam-card');
+
+    let visibleCount = examCards.length;
+
+    function filterExams(query) {
+      const normalizedQuery = query.toLowerCase().trim();
+      
+      examCards.forEach(card => {
+        const title = card.dataset.title;
+        if (title.includes(normalizedQuery)) {
+          card.style.display = 'block';
+          card.classList.remove('hidden');
+          card.classList.add('animate-in', 'fade-in', 'duration-200');
+        } else {
+          card.style.display = 'none';
+          card.classList.add('hidden');
+          card.classList.remove('animate-in', 'fade-in');
+        }
+      });
+
+      // Actualizar contador
+      visibleCount = document.querySelectorAll('.exam-card:not([style*="display: none"])').length;
+      updateSearchCount(normalizedQuery);
+      
+      // Mostrar/ocultar contador
+      searchCount.classList.toggle('hidden', normalizedQuery === '');
+    }
+
+    function updateSearchCount(query) {
+      if (query) {
+        searchCount.textContent = `${visibleCount} exam${visibleCount !== 1 ? 's' : ''} found`;
+      } else {
+        searchCount.textContent = `${examCards.length} exam${examCards.length !== 1 ? 's' : ''}`;
+      }
+    }
+
+    // Eventos de búsqueda
+    searchInput.addEventListener('input', (e) => {
+      filterExams(e.target.value);
+      clearSearch.classList.toggle('hidden', e.target.value === '');
+    });
+
+    clearSearch.addEventListener('click', () => {
+      searchInput.value = '';
+      filterExams('');
+      searchInput.focus();
+    });
+
+    // Enter para limpiar
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        searchInput.value = '';
+        filterExams('');
+        searchInput.blur();
+      }
+    });
+
     // 🔄 Auto-eliminar notificaciones después de 5 segundos
     const successNotif = document.getElementById('successNotification');
     const errorNotif = document.getElementById('errorNotification');
@@ -149,6 +236,7 @@
       }
     });
 
+    // Resto del código de upload y delete (sin cambios)...
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const dragText = document.getElementById('dragText');
