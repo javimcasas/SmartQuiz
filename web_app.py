@@ -33,7 +33,7 @@ app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="stat
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 
-async def call_ai_api(prompt: str) -> str:
+async def call_ai_api(prompt: str, model: str = "sonar") -> str:
     api_key = os.getenv("PERPLEXITY_API_KEY")
     if not api_key:
         raise HTTPException(status_code=500, detail="Missing PERPLEXITY_API_KEY")
@@ -85,7 +85,7 @@ async def call_ai_api(prompt: str) -> str:
     }
     
     payload = {
-        "model": "sonar",
+        "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 8000,
         "temperature": 0.05,
@@ -548,6 +548,7 @@ async def generate_exam(
     passing_score: float = Form(...),
     total_points: float = Form(...),
     format: str = Form("multiple"),
+    model: str = Form("sonar"),
     files: List[UploadFile] = File(default=[])
 ):
     valid_files = [
@@ -591,7 +592,7 @@ RESPUESTA JSONSchema VÁLIDO ÚNICAMENTE:
 
     try:
         # 🎯 2. Llamada a IA (ejemplo con mi API interna)
-        ai_response = await call_ai_api(prompt)  # ← Implementar esto
+        ai_response = await call_ai_api(prompt, model)  # ← Implementar esto
         
         # 🎯 3. Parse + validar
         raw_exam = json.loads(ai_response)

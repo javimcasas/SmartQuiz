@@ -146,6 +146,18 @@
       </div>
     </div>
 
+    <!-- Selector de modelo -->
+    <div>
+        <label class="block text-sm font-medium mb-2">AI Model</label>
+        <select name="model" required class="w-full px-4 py-3 rounded-xl border border-border bg-background focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all">
+            <option value="sonar" selected>Sonar (Fast)</option>
+            <option value="sonar-pro">Sonar Pro (Advanced)</option>
+        </select>
+        <p class="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+            <span>⚡ Sonar: Fast generation</span>
+        </p>
+    </div>
+
     <!-- Submit con loading states -->
     <button type="submit"
             class="generate-btn w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold py-4 px-8 rounded-2xl text-lg shadow-2xl hover:from-purple-600 hover:to-pink-600 focus:ring-4 focus:ring-purple-500/50 transition-all transform hover:-translate-y-0.5 relative overflow-hidden group">
@@ -184,8 +196,63 @@
 <script>
 let isSubmitting = false;  // Flag para prevenir beforeunload durante submit
 
+// 🔥 1. FILE UPLOAD HANDLER (INDEPENDIENTE - primero)
+document.querySelector('input[type="file"][name="files"]').addEventListener('change', function(e) {
+  const fileList = document.getElementById('fileList');
+  const maxFiles = parseInt(this.dataset.maxFiles) || 3;
+  const maxSize = parseInt(this.dataset.maxSize) || 15728640; // 15MB
+
+  fileList.innerHTML = '';
+  fileList.classList.add('hidden');
+  
+  let validFiles = 0;
+  
+  Array.from(this.files).forEach((file) => {
+    const isValidType = file.name.toLowerCase().match(/\.pdf|\.txt$/);
+    const isValidSize = file.size <= maxSize;
+    
+    const fileItem = document.createElement('div');
+    fileItem.className = 'flex items-center justify-between p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg text-xs';
+    
+    if (isValidType && isValidSize) {
+      validFiles++;
+      fileItem.innerHTML = `
+        <div class="flex items-center gap-2 truncate flex-1">
+          <span class="font-medium truncate">${file.name}</span>
+          <span class="bg-green-100 text-green-800 px-2 py-px rounded-full text-xs">${(file.size/1024/1024).toFixed(1)}MB</span>
+        </div>
+        <span class="text-green-600 font-medium">✓</span>
+      `;
+    } else {
+      let errorMsg = [];
+      if (!isValidType) errorMsg.push('PDF/TXT');
+      if (!isValidSize) errorMsg.push('>15MB');
+      
+      fileItem.innerHTML = `
+        <div class="flex items-center gap-2 truncate flex-1">
+          <span class="line-through truncate">${file.name}</span>
+          <span class="bg-red-100 text-red-800 px-2 py-px rounded-full text-xs">${(file.size/1024/1024).toFixed(1)}MB</span>
+        </div>
+        <span class="text-red-600">⚠</span>
+      `;
+    }
+    
+    fileList.appendChild(fileItem);
+  });
+  
+  if (this.files.length > 0) {
+    fileList.classList.remove('hidden');
+    if (this.files.length > maxFiles) {
+      const warning = document.createElement('div');
+      warning.className = 'mt-2 p-2 bg-yellow-100 border border-yellow-300 rounded-lg text-xs text-yellow-800';
+      warning.innerHTML = `⚠ Only first ${maxFiles} files processed`;
+      fileList.appendChild(warning);
+    }
+  }
+});
+
+// 🔥 2. FORM SUBMIT HANDLER (tu código limpio)
 document.getElementById('generateForm').addEventListener('submit', function(e) {
-  // 🔥 PREVENIR MÚLTIPLES SUBMITS
   const btn = document.querySelector('.generate-btn');
   const form = document.getElementById('generateForm');
   
@@ -194,12 +261,10 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
     return false;
   }
 
-  // 🔥 MARCAR COMO SUBMITTING INMEDIATAMENTE (evita beforeunload)
+  // 🔥 MARCAR COMO SUBMITTING
   isSubmitting = true;
-
-  // 🔥 BLOQUEAR BOTÓN
   btn.disabled = true;
-  btn.classList.add('submitting');
+  btn.classList.add('submitting', 'group-loading');
   btn.querySelector('.btn-text').textContent = '⏳ Processing...';
   
   const progressContainer = document.getElementById('progressContainer');
@@ -208,18 +273,10 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
   const progressLabel = document.getElementById('progressLabel');
   const progressMessage = document.getElementById('progressMessage');
   
-  // Activar loading visual
-  btn.classList.add('group-loading');
   progressContainer.classList.remove('hidden');
+  progressContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
   
-  // Scroll suave
-  progressContainer.scrollIntoView({ 
-    behavior: 'smooth', 
-    block: 'center',
-    inline: 'nearest'
-  });
-  
-  // Fases del progreso (sin cambios)
+  // Fases del progreso
   const phases = [
     { percent: 10, message: "Analyzing your request ✨", duration: 1000 },
     { percent: 25, message: "Processing attached files 📎", duration: 1500 },
@@ -238,10 +295,7 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
     progressLabel.textContent = targetPercent + '%';
     progressLabel.classList.toggle('hidden', targetPercent < 20);
     progressMessage.textContent = message;
-    
-    if (isFinal) {
-      progressBar.classList.add('animate-pulse');
-    }
+    if (isFinal) progressBar.classList.add('animate-pulse');
   }
   
   function nextPhase() {
@@ -255,14 +309,12 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
     }
   }
   
-  // Iniciar progress
   updateProgress(0, phases[0].message);
   setTimeout(nextPhase, 500);
   
-  // 🔥 beforeunload CONDICIONAL (solo si NO está submitting)
+  // 🔥 beforeunload CONDICIONAL
   const preventUnload = (e) => {
-    if (isSubmitting) return;  // ← CLAVE: Ignora durante submit
-    
+    if (isSubmitting) return;
     e.preventDefault();
     e.returnValue = 'AI is generating your exam. This may take 30-90 seconds. Cancel?';
     return e.returnValue;
@@ -270,7 +322,7 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
   
   window.addEventListener('beforeunload', preventUnload);
   
-  // 🔥 TIMEOUT DE SEGURIDAD (5min) - Limpieza completa
+  // 🔥 TIMEOUT SEGURIDAD (5min)
   setTimeout(() => {
     isSubmitting = false;
     btn.disabled = false;
@@ -278,7 +330,7 @@ document.getElementById('generateForm').addEventListener('submit', function(e) {
     btn.querySelector('.btn-text').textContent = '✨ Generate Exam with AI';
     window.removeEventListener('beforeunload', preventUnload);
     progressContainer.classList.add('hidden');
-  }, 300000); // 5 minutos
+  }, 300000);
 });
 </script>
 
