@@ -98,7 +98,7 @@ async def call_ai_api(prompt: str, model: str = "sonar") -> str:
         }
     }
 
-    timeout = aiohttp.ClientTimeout(total=90)
+    timeout = aiohttp.ClientTimeout(total=270)
     async with aiohttp.ClientSession(timeout=timeout) as session:
         async with session.post(url, headers=headers, json=payload) as resp:
             if resp.status >= 400:
